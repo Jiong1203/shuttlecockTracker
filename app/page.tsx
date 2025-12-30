@@ -3,7 +3,9 @@
 import { useState, useEffect, useCallback } from "react"
 import { InventoryDisplay } from "@/components/inventory-display"
 import { PickupForm } from "@/components/pickup-form"
+import { SettlementDialog } from "@/components/settlement-dialog"
 import { PickupHistory } from "@/components/pickup-history"
+
 import { Loader2 } from "lucide-react"
 
 export default function Home() {
@@ -76,7 +78,8 @@ export default function Home() {
 
         <div className="flex justify-center flex-col items-center">
            <PickupForm onSuccess={fetchData} />
-           <PickupHistory records={records} />
+           <PickupHistory records={records} onDelete={fetchData} />
+
         </div>
 
         <footer className="py-12 text-center text-slate-300 text-sm">
