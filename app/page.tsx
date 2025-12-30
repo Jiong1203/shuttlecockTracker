@@ -80,8 +80,8 @@ export default function Home() {
         </div>
 
         <footer className="py-12 text-center text-slate-300 text-sm">
-  &copy; 2025 動資訊有限公司 Active Info Co., Ltd. All rights reserved.
-</footer>
+          &copy; 2025 動資訊有限公司 Active Info Co., Ltd. All rights reserved.
+        </footer>
       </div>
     </main>
   )
