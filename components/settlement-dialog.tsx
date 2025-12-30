@@ -12,7 +12,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Calculator, Calendar, User, DollarSign } from "lucide-react"
-import { format, isWithinInterval, startOfDay, endOfDay, parseISO } from "date-fns"
+import { isWithinInterval, startOfDay, endOfDay, parseISO } from "date-fns"
+
 
 interface PickupRecord {
   id: string
