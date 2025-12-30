@@ -57,11 +57,12 @@ export function PickupForm({ onSuccess }: PickupFormProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="lg" className="w-full max-w-md mx-auto flex gap-2 h-14 text-lg font-bold shadow-md hover:shadow-xl transition-all">
-          <PlusCircle size={24} />
+        <Button size="lg" className="flex-1 min-w-[120px] flex gap-2 h-14 text-base font-bold shadow-md hover:shadow-xl transition-all bg-blue-600 hover:bg-blue-700">
+          <PlusCircle size={20} />
           領取登記
         </Button>
       </DialogTrigger>
+
       <DialogContent className="sm:max-w-[425px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>

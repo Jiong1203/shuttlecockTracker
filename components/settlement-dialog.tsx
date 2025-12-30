@@ -71,11 +71,13 @@ export function SettlementDialog({ records }: SettlementDialogProps) {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline" size="lg" className="w-full max-w-md mx-auto flex gap-2 h-14 text-lg font-bold border-2 border-slate-200 hover:border-blue-500 hover:text-blue-500 transition-all">
-          <Calculator size={24} />
+        <Button size="lg" className="flex-1 min-w-[120px] flex gap-2 h-14 text-base font-bold shadow-md hover:shadow-xl transition-all bg-slate-800 hover:bg-slate-900 text-white border-0">
+          <Calculator size={20} />
           結算試算
         </Button>
       </DialogTrigger>
+
+
       <DialogContent className="sm:max-w-[450px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-2xl font-black">

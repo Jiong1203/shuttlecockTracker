@@ -4,7 +4,9 @@ import { useState, useEffect, useCallback } from "react"
 import { InventoryDisplay } from "@/components/inventory-display"
 import { PickupForm } from "@/components/pickup-form"
 import { SettlementDialog } from "@/components/settlement-dialog"
+import { RestockForm } from "@/components/restock-form"
 import { PickupHistory } from "@/components/pickup-history"
+
 
 import { Loader2 } from "lucide-react"
 
@@ -64,7 +66,7 @@ export default function Home() {
     <main className="min-h-screen bg-slate-50 p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-8">
         <header className="text-center mb-8">
-          <h1 className="text-3xl font-black text-slate-800 tracking-tight">羽球領取管理系統</h1>
+          <h1 className="text-3xl font-black text-slate-800 tracking-tight">羽球庫存共享小幫手</h1>
           <p className="text-slate-500 mt-2">Shuttlecock Tracker</p>
         </header>
 
@@ -76,11 +78,15 @@ export default function Home() {
           />
         )}
 
-        <div className="flex flex-col items-center gap-4">
+        <div className="flex flex-row justify-center items-center gap-3 w-full max-w-2xl mx-auto">
            <PickupForm onSuccess={fetchData} />
            <SettlementDialog records={records} />
+           <RestockForm onSuccess={fetchData} />
+        </div>
+        <div className="w-full max-w-2xl mx-auto">
            <PickupHistory records={records} onDelete={fetchData} />
         </div>
+
 
 
         <footer className="py-12 text-center text-slate-300 text-sm">
