@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 羽球庫存共享小幫手 (Shuttlecock Tracker)
 
-## Getting Started
+這是一個基於 **Next.js 15** 與 **Supabase** 打造的羽球庫存管理系統，旨在解決羽球團體中庫存統計與費用結算的痛點。
 
-First, run the development server:
+## 🚀 核心功能
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **即時庫存監控**：直觀顯示剩餘桶數，並在低庫存時自動發出報警提示。
+- **領取登記流程**：快速登記領取人、數量與時間，支援即時歷史紀錄更新。
+- **安全入庫管理**：具備密碼驗證（預設 `1111`）的入庫流程，支援二次確認以防止輸入錯誤。
+- **智能數據結算**：可按領取人、時間區間與單價即時試算總領取桶數與應付金額。
+- **歷史紀錄管理**：清楚記錄每一筆變動，並支援紀錄刪除與庫存連動更新。
+
+## 🛠️ 技術架構
+
+本專案採用現代化全棧架構，確保開發效率與運行穩定性：
+
+```mermaid
+graph TD
+    User((使用者 UI)) -- React Server Components --> Page[Next.js App Router]
+    Page -- API Routes --> Backend[Next.js API Routes]
+    Backend -- Supabase Client --> Supabase[(Supabase DB / PostgreSQL)]
+    Supabase -- Real-time View --> Inventory[現有庫存計算]
+
+    subgraph Frontend [前端組件]
+        UI1[Shadcn UI / Tailwind CSS]
+        UI2[Lucide Icons]
+        UI3[Date-fns 處理時間]
+    end
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- **框架**：Next.js 15 (App Router)
+- **樣式**：Tailwind CSS 4 + Shadcn UI
+- **資料庫**：Supabase (PostgreSQL)
+- **部署**：Vercel
+- **邏輯**：採用 PostgreSQL View (`inventory_summary`) 自動處理累加與相減邏輯，確保數據一致性。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 📦 開發指南
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 1. 環境變數設定
 
-## Learn More
+請在專案根目錄建立 `.env.local` 並填入以下資訊：
 
-To learn more about Next.js, take a look at the following resources:
+```env
+NEXT_PUBLIC_SUPABASE_URL=你的_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY=你的_SUPABASE_ANON_KEY
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 2. 資料庫初始化
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+請在 Supabase SQL Editor 中執行專案內的 `supabase-setup.sql` 檔案內容，以建立必要的 Table 與 View。
 
-## Deploy on Vercel
+### 3. 本地啟動
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm install
+npm run dev
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🔐 安全說明
+
+目前管理功能（如：入庫登記）採用簡單的密碼驗證 (`1111`)，建議在生產環境部署時修改 `app/api/inventory/restock/route.ts` 中的密碼驗證邏輯或改用 Supabase Auth。
+
+---
+
+© 2025 動資訊有限公司 Active Info Co., Ltd. All rights reserved.
