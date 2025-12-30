@@ -76,11 +76,12 @@ export default function Home() {
           />
         )}
 
-        <div className="flex justify-center flex-col items-center">
+        <div className="flex flex-col items-center gap-4">
            <PickupForm onSuccess={fetchData} />
+           <SettlementDialog records={records} />
            <PickupHistory records={records} onDelete={fetchData} />
-
         </div>
+
 
         <footer className="py-12 text-center text-slate-300 text-sm">
           &copy; 2025 動資訊有限公司 Active Info Co., Ltd. All rights reserved.
