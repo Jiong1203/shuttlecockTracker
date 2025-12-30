@@ -22,6 +22,15 @@ export default function Home() {
         fetch('/api/pickup')
       ])
       
+      if (!invRes.ok) {
+        const errorText = await invRes.text();
+        throw new Error(`Inventory API error: ${invRes.status} ${errorText}`);
+      }
+      if (!pickRes.ok) {
+        const errorText = await pickRes.text();
+        throw new Error(`Pickup API error: ${pickRes.status} ${errorText}`);
+      }
+
       const invData = await invRes.json()
       const pickData = await pickRes.json()
       
@@ -29,10 +38,12 @@ export default function Home() {
       setRecords(pickData)
     } catch (error) {
       console.error("Fetch data error:", error)
+      alert(error instanceof Error ? error.message : "資料讀取失敗，請檢查資料庫連線與環境變數設定。")
     } finally {
       setLoading(false)
     }
   }, [])
+
 
   useEffect(() => {
     fetchData()
