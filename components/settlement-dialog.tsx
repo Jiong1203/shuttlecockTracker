@@ -30,7 +30,7 @@ export function SettlementDialog({ records }: SettlementDialogProps) {
   const [selectedName, setSelectedName] = useState<string>("all")
   const [startDate, setStartDate] = useState<string>("")
   const [endDate, setEndDate] = useState<string>("")
-  const [pricePerUnit, setPricePerUnit] = useState<string>("650")
+  const [pricePerUnit, setPricePerUnit] = useState<string>("645")
 
   // 提取所有不重複的領取人姓名
   const uniqueNames = useMemo(() => {
@@ -139,7 +139,7 @@ export function SettlementDialog({ records }: SettlementDialogProps) {
               type="number" 
               value={pricePerUnit} 
               onChange={(e) => setPricePerUnit(e.target.value)}
-              placeholder="例如 650"
+              placeholder="例如 645"
               className="h-12 font-bold text-lg"
             />
           </div>
