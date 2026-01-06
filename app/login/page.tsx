@@ -156,7 +156,7 @@ export default function LoginPage() {
             </div>
           </div>
           <CardTitle className="text-3xl font-black tracking-tight text-slate-900">
-            {isSignUp ? '建立您的球團' : '歡迎回來'}
+            {isSignUp ? '建立您的球團' : '羽球庫存共享小幫手'}
           </CardTitle>
           <CardDescription className="text-slate-500 text-base font-medium">
             {isSignUp ? '註冊後即可開始管理球團庫存' : '請登入球團帳號以繼續'}
@@ -239,7 +239,12 @@ export default function LoginPage() {
             
             <button 
               type="button"
-              onClick={() => setIsSignUp(!isSignUp)}
+              onClick={() => {
+                setIsSignUp(!isSignUp)
+                setAccount('')
+                setPassword('')
+                setGroupName('')
+              }}
               className="text-slate-500 hover:text-blue-600 text-sm font-semibold transition-colors duration-200 py-1"
             >
               {isSignUp ? '已經有球團帳號？點此登入' : '還沒有建立球團？點此註冊新帳號'}
