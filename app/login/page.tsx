@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -16,8 +16,18 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [isSignUp, setIsSignUp] = useState(false)
   const [groupName, setGroupName] = useState('')
+  const [rememberAccount, setRememberAccount] = useState(false)
   const supabase = useMemo(() => createClient(), [])
   const router = useRouter()
+
+  // Load remembered account on mount
+  useEffect(() => {
+    const savedAccount = localStorage.getItem('remembered_shuttle_account')
+    if (savedAccount) {
+      setAccount(savedAccount)
+      setRememberAccount(true)
+    }
+  }, [])
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -88,6 +98,14 @@ export default function LoginPage() {
         })
 
         if (error) throw error
+
+        // Handle Remember Me
+        if (rememberAccount) {
+          localStorage.setItem('remembered_shuttle_account', account)
+        } else {
+          localStorage.removeItem('remembered_shuttle_account')
+        }
+
         router.push('/')
         router.refresh()
       }
@@ -186,6 +204,24 @@ export default function LoginPage() {
                 className="bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:ring-blue-500/20 focus:border-blue-500 h-12 rounded-xl transition-all"
               />
             </div>
+
+            {!isSignUp && (
+              <div className="flex items-center space-x-2 ml-1">
+                <input
+                  type="checkbox"
+                  id="remember"
+                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 transition-all cursor-pointer"
+                  checked={rememberAccount}
+                  onChange={(e) => setRememberAccount(e.target.checked)}
+                />
+                <label
+                  htmlFor="remember"
+                  className="text-sm font-semibold text-slate-600 cursor-pointer select-none"
+                >
+                  記住球團帳號
+                </label>
+              </div>
+            )}
           </CardContent>
 
           <CardFooter className="flex flex-col gap-6 pb-10 pt-8 text-center px-6">
