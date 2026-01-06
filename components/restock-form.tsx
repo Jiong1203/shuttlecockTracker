@@ -22,19 +22,55 @@ export function RestockForm({ onSuccess }: RestockFormProps) {
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState<1 | 2 | 3>(1) // 1: 密碼, 2: 數量, 3: 二次確認
   const [loading, setLoading] = useState(false)
+  const [hasRestockPassword, setHasRestockPassword] = useState(false)
   
   const [password, setPassword] = useState("")
   const [amount, setAmount] = useState("10")
   const [error, setError] = useState<string | null>(null)
 
-  const handleVerifyPassword = (e: React.FormEvent) => {
+  // 檢查是否需要密碼（目前恆定需要，至少是 1111）
+  const checkSecurity = async () => {
+    try {
+      const res = await fetch('/api/group')
+      const data = await res.json()
+      setHasRestockPassword(data.hasRestockPassword)
+      // 無論是否有自訂密碼，都保持在第 1 步 (驗證步)
+      setStep(1)
+    } catch (error) {
+      console.error("Failed to fetch security settings:", error)
+      setStep(1)
+    }
+  }
+
+  const handleVerifyPassword = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (password === "1111") {
+    if (!password) {
+      setError("請輸入密碼")
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+    try {
+      // 調用 API 驗證密碼
+      const res = await fetch('/api/group', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentRestockPassword: password })
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || "密碼錯誤")
+      }
+
       setStep(2)
-      setError(null)
-    } else {
-      setError("密碼錯誤，請重新輸入")
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "驗證失敗，請重新輸入"
+      setError(message)
       setPassword("")
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -70,7 +106,13 @@ export function RestockForm({ onSuccess }: RestockFormProps) {
         onSuccess()
       } else {
         setError(data.error || "入庫失敗")
-        setStep(2) // 發生錯誤時退回數量輸入步驟
+        // 如果是密碼錯誤，跳回第一步
+        if (response.status === 401) {
+          setStep(1)
+          setPassword("")
+        } else {
+          setStep(2)
+        }
       }
     } catch (err) {
       console.error("Restock error:", err)
@@ -91,7 +133,11 @@ export function RestockForm({ onSuccess }: RestockFormProps) {
   return (
     <Dialog open={open} onOpenChange={(val) => {
       setOpen(val)
-      if (!val) resetState()
+      if (val) {
+        checkSecurity()
+      } else {
+        resetState()
+      }
     }}>
       <DialogTrigger asChild>
         <Button size="lg" className="flex-1 min-w-[120px] flex gap-2 h-14 text-base font-bold shadow-md hover:shadow-xl transition-all bg-emerald-600 hover:bg-emerald-700 text-white border-0">
@@ -106,7 +152,7 @@ export function RestockForm({ onSuccess }: RestockFormProps) {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Lock className="text-slate-400" size={20} />
-                身分驗證
+                {hasRestockPassword ? "入庫驗證" : "身分驗證"}
               </DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-6">
@@ -126,7 +172,8 @@ export function RestockForm({ onSuccess }: RestockFormProps) {
               </div>
             </div>
             <DialogFooter>
-              <Button type="submit" className="w-full h-12 text-lg font-bold bg-slate-800">
+              <Button type="submit" className="w-full h-12 text-lg font-bold bg-slate-800" disabled={loading}>
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 驗證並繼續
               </Button>
             </DialogFooter>
