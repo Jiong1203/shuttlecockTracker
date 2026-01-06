@@ -151,8 +151,8 @@ export function RestockForm({ onSuccess }: RestockFormProps) {
           <form onSubmit={handleVerifyPassword}>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <Lock className="text-slate-400" size={20} />
-                {hasRestockPassword ? "入庫驗證" : "身分驗證"}
+                <Lock className="text-muted-foreground" size={20} />
+                <span className="text-foreground">{hasRestockPassword ? "入庫驗證" : "身分驗證"}</span>
               </DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-6">
@@ -172,7 +172,7 @@ export function RestockForm({ onSuccess }: RestockFormProps) {
               </div>
             </div>
             <DialogFooter>
-              <Button type="submit" className="w-full h-12 text-lg font-bold bg-slate-800" disabled={loading}>
+              <Button type="submit" className="w-full h-12 text-lg font-bold bg-primary text-primary-foreground" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 驗證並繼續
               </Button>
@@ -216,13 +216,13 @@ export function RestockForm({ onSuccess }: RestockFormProps) {
                 入庫二次確認
               </DialogTitle>
             </DialogHeader>
-            <div className="py-8 text-center bg-orange-50/50 rounded-xl my-4 border border-orange-100">
-               <p className="text-slate-500 mb-1">本次準備入庫數量</p>
-               <p className="text-5xl font-black text-slate-800">{amount} <span className="text-xl font-normal">桶</span></p>
+            <div className="py-8 text-center bg-muted/50 rounded-xl my-4 border border-border">
+               <p className="text-muted-foreground mb-1">本次準備入庫數量</p>
+               <p className="text-5xl font-black text-foreground">{amount} <span className="text-xl font-normal">桶</span></p>
                {error && <p className="text-sm text-red-500 mt-4">{error}</p>}
             </div>
             <div className="grid grid-cols-2 gap-3 mt-4">
-              <Button variant="outline" onClick={() => setStep(2)} disabled={loading} className="h-12 border-slate-200">
+              <Button variant="outline" onClick={() => setStep(2)} disabled={loading} className="h-12 border-border">
                 返回修改
               </Button>
               <Button onClick={handleRestock} className="h-12 text-lg font-bold bg-emerald-600 hover:bg-emerald-700 text-white border-0" disabled={loading}>

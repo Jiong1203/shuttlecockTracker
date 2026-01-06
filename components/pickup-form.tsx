@@ -70,7 +70,7 @@ export function PickupForm({ onSuccess }: PickupFormProps) {
           </DialogHeader>
           <div className="grid gap-4 py-6">
             <div className="grid gap-2">
-              <Label htmlFor="name">領取人姓名</Label>
+              <Label htmlFor="name" className="text-foreground font-bold">領取人姓名</Label>
               <Input
                 id="name"
                 value={name}
@@ -81,7 +81,7 @@ export function PickupForm({ onSuccess }: PickupFormProps) {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="quantity">領取桶數</Label>
+              <Label htmlFor="quantity" className="text-foreground font-bold">領取桶數</Label>
               <Input
                 id="quantity"
                 type="number"

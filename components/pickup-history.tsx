@@ -59,10 +59,10 @@ export function PickupHistory({ records, onDelete }: PickupHistoryProps) {
 
   return (
     <div className="w-full max-w-2xl mx-auto mt-8">
-      <h2 className="text-xl font-bold mb-4 px-2 text-slate-700">領取歷史紀錄</h2>
-      <div className="bg-white rounded-xl border-2 shadow-sm overflow-hidden">
+      <h2 className="text-xl font-bold mb-4 px-2 text-foreground">領取歷史紀錄</h2>
+      <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
         <Table>
-          <TableHeader className="bg-slate-50">
+          <TableHeader className="bg-muted/50">
             <TableRow>
               <TableHead className="font-bold">領取人</TableHead>
               <TableHead className="text-right font-bold">桶數</TableHead>
@@ -79,17 +79,17 @@ export function PickupHistory({ records, onDelete }: PickupHistoryProps) {
               </TableRow>
             ) : (
               records.map((record) => (
-                <TableRow key={record.id} className="hover:bg-slate-50 transition-colors group">
-                  <TableCell className="font-medium text-slate-700">{record.picker_name}</TableCell>
-                  <TableCell className="text-right text-slate-600 font-semibold">{record.quantity} 桶</TableCell>
-                  <TableCell className="text-right text-slate-400 text-xs">
+                <TableRow key={record.id} className="hover:bg-muted/30 transition-colors group">
+                  <TableCell className="font-medium text-foreground">{record.picker_name}</TableCell>
+                  <TableCell className="text-right text-foreground font-semibold">{record.quantity} 桶</TableCell>
+                  <TableCell className="text-right text-muted-foreground text-xs">
                     {format(new Date(record.created_at), 'MM/dd HH:mm', { locale: zhTW })}
                   </TableCell>
                   <TableCell className="text-center">
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      className="text-slate-300 hover:text-red-500 hover:bg-red-50"
+                      className="text-slate-300 dark:text-slate-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20"
                       onClick={() => setDeleteId(record.id)}
                     >
                       <Trash2 size={16} />
@@ -124,4 +124,3 @@ export function PickupHistory({ records, onDelete }: PickupHistoryProps) {
     </div>
   )
 }
-

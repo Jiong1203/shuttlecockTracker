@@ -206,8 +206,8 @@ export function GroupSettingsDialog({ currentGroupName, onUpdateSuccess }: Group
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-blue-600" />
-            球團帳號設定
+            <ShieldCheck className="w-5 h-5 text-blue-600 dark:text-blue-500" />
+            <span className="dark:text-white">球團帳號設定</span>
           </DialogTitle>
           <DialogDescription>
             在此管理您的球團名稱、共享密碼及安全設定。
@@ -217,7 +217,7 @@ export function GroupSettingsDialog({ currentGroupName, onUpdateSuccess }: Group
         <div className="grid gap-6 py-4">
           {/* Group Name Section */}
           <div className="space-y-2">
-            <Label htmlFor="name" className="flex items-center gap-2 text-slate-700 font-bold">
+            <Label htmlFor="name" className="flex items-center gap-2 text-foreground font-bold">
               <Type className="w-4 h-4" /> 球團名稱
             </Label>
             <div className="flex gap-2">
@@ -241,7 +241,7 @@ export function GroupSettingsDialog({ currentGroupName, onUpdateSuccess }: Group
 
           {/* Login Password Section */}
           <div className="space-y-2">
-            <Label htmlFor="login-pass" className="flex items-center gap-2 text-slate-700 font-bold">
+            <Label htmlFor="login-pass" className="flex items-center gap-2 text-foreground font-bold">
               <KeyRound className="w-4 h-4" /> 變更共享密碼 (系統登入用)
             </Label>
             <div className="flex gap-2">
@@ -262,14 +262,14 @@ export function GroupSettingsDialog({ currentGroupName, onUpdateSuccess }: Group
                 更新
               </Button>
             </div>
-            <p className="text-[10px] text-slate-400">更新後，所有共用此帳號的成員皆需使用新密碼登入。</p>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500">更新後，所有共用此帳號的成員皆需使用新密碼登入。</p>
           </div>
 
           <hr className="border-slate-100" />
 
           {/* Contact Email Section */}
           <div className="space-y-2">
-            <Label htmlFor="contact-email" className="flex items-center gap-2 text-slate-700 font-bold">
+            <Label htmlFor="contact-email" className="flex items-center gap-2 text-foreground font-bold">
               <Mail className="w-4 h-4" /> 聯絡信箱
             </Label>
             <div className="flex gap-2">
@@ -290,25 +290,25 @@ export function GroupSettingsDialog({ currentGroupName, onUpdateSuccess }: Group
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "更新"}
               </Button>
             </div>
-            <p className="text-[10px] text-slate-400">供未來開發相關通知或管理功能使用。</p>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500">供未來開發相關通知或管理功能使用。</p>
           </div>
 
           <hr className="border-slate-100" />
 
           {/* Restock Password Section */}
           <div className="space-y-3">
-            <Label className="flex items-center gap-2 text-slate-700 font-bold">
+            <Label className="flex items-center gap-2 text-foreground font-bold">
               <ShieldCheck className="w-4 h-4" /> 入庫管理密碼
             </Label>
             
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 min-h-[100px] flex flex-col justify-center">
+            <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-border min-h-[100px] flex flex-col justify-center">
               {restockStep === 'info' ? (
                 <div className="flex flex-col items-center gap-3">
                   <div className="flex items-center gap-2 text-sm font-medium">
                     {hasRestockPassword ? (
-                      <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">已啟用自訂密碼防護</span>
+                      <span className="text-emerald-600 dark:text-emerald-500 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded border border-emerald-100 dark:border-emerald-900/50">已啟用自訂密碼防護</span>
                     ) : (
-                      <span className="text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">目前使用系統預設碼 (1111)</span>
+                      <span className="text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">目前使用系統預設碼 (1111)</span>
                     )}
                   </div>
                   <Button 
@@ -323,7 +323,7 @@ export function GroupSettingsDialog({ currentGroupName, onUpdateSuccess }: Group
               ) : restockStep === 'verify' ? (
                 <div className="space-y-3">
                   <div className="space-y-1">
-                    <p className="text-[10px] text-slate-500 ml-1">
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 ml-1">
                       階段 1：驗證原入庫密碼 {!hasRestockPassword && "(預設為 1111)"}
                     </p>
                     <Input
@@ -401,7 +401,7 @@ export function GroupSettingsDialog({ currentGroupName, onUpdateSuccess }: Group
                 </div>
               )}
             </div>
-            <p className="text-[10px] text-slate-400">入庫登記為敏感操作，建議設定專屬密碼與球團成員共享。</p>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 text-center">入庫登記為敏感操作，建議設定專屬密碼與球團成員共享。</p>
           </div>
         </div>
 

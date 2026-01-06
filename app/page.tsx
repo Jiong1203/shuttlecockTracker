@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation"
 import { Loader2, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { GroupSettingsDialog } from "@/components/group-settings-dialog"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 export default function Home() {
   const [inventory, setInventory] = useState<{
@@ -89,7 +90,7 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center gap-4 bg-slate-50">
+      <div className="flex h-screen w-screen flex-col items-center justify-center gap-4 bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
         <p className="text-slate-500 font-medium">資料讀取中...</p>
       </div>
@@ -97,27 +98,26 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 p-4 md:p-8">
+    <main className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-8">
-        <header className="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100 gap-4">
+        <header className="flex flex-col md:flex-row justify-between items-center bg-card p-6 rounded-2xl shadow-sm border border-border gap-4">
           <div className="text-center md:text-left">
-            <h1 className="text-3xl font-black text-slate-800 tracking-tight">羽球庫存共享小幫手</h1>
+            <h1 className="text-3xl font-black text-foreground tracking-tight">羽球庫存共享小幫手</h1>
             <div className="flex items-center justify-center md:justify-start gap-2 mt-1">
-               <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-bold rounded-full uppercase tracking-wider">
-                 Beta
-               </span>
-               <p className="text-slate-400 text-sm font-medium">Shuttlecock Tracker</p>
+              <span className="bg-blue-600 dark:bg-blue-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full tracking-wider shadow-sm uppercase">Beta</span>
+              <span className="text-muted-foreground text-sm font-semibold tracking-tight">Shuttlecock Tracker</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 bg-muted/50 p-2 pl-4 rounded-xl border border-border">
             {group ? (
               <div className="flex items-center gap-2">
-                <span className="text-slate-500 font-medium hidden sm:inline">球團：</span>
-                <span className="text-blue-600 font-bold px-3 py-1 bg-blue-50 rounded-lg ring-1 ring-blue-100">
+                <span className="text-muted-foreground text-xs font-bold uppercase tracking-wider">球團 :</span>
+                <span className="text-blue-600 font-bold px-3 py-1 bg-muted rounded-lg ring-1 ring-border">
                   {group.name}
                 </span>
-                <div className="h-4 w-px bg-slate-200 mx-1 hidden sm:block" />
+                <div className="h-4 w-px bg-slate-200 dark:bg-slate-600 mx-1 hidden sm:block" />
+                <ThemeToggle />
                 <GroupSettingsDialog 
                   currentGroupName={group.name} 
                   onUpdateSuccess={(newName) => {
@@ -132,7 +132,7 @@ export default function Home() {
                   variant="ghost" 
                   size="sm" 
                   onClick={handleLogout}
-                  className="text-slate-500 hover:text-red-600 hover:bg-red-50 gap-2 transition-all"
+                  className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-2 transition-all"
                 >
                   <LogOut className="w-4 h-4" />
                   登出
@@ -141,10 +141,10 @@ export default function Home() {
             ) : (
               <div className="flex items-center gap-4">
                 <div className="text-right hidden sm:block">
-                  <p className="text-xs text-slate-400 font-bold uppercase tracking-tighter">當前球團</p>
-                  <p className="text-slate-700 font-black">未載入</p>
+                  <p className="text-xs text-muted-foreground font-bold uppercase tracking-tighter">當前球團</p>
+                  <p className="text-foreground font-black">未載入</p>
                 </div>
-                <div className="h-10 w-px bg-slate-100 mx-2 hidden sm:block" />
+                <div className="h-10 w-px bg-border mx-2 hidden sm:block" />
                 <Button 
                   variant="ghost" 
                   size="icon" 

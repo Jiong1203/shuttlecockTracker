@@ -82,18 +82,18 @@ export function SettlementDialog({ records }: SettlementDialogProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-2xl font-black">
             <Calculator className="text-blue-500" />
-            數據結算試算
+            <span className="dark:text-white">數據結算試算</span>
           </DialogTitle>
         </DialogHeader>
         
         <div className="grid gap-6 py-6">
           {/* 領取人選擇 */}
           <div className="grid gap-2">
-            <Label className="flex items-center gap-2 text-slate-600">
+            <Label className="flex items-center gap-2 text-slate-600 dark:text-white">
               <User size={16} /> 選擇領取人
             </Label>
             <select 
-              className="flex h-12 w-full rounded-md border border-slate-200 bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500"
+              className="flex h-12 w-full rounded-md border border-border bg-card px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500"
               value={selectedName}
               onChange={(e) => setSelectedName(e.target.value)}
             >
@@ -107,7 +107,7 @@ export function SettlementDialog({ records }: SettlementDialogProps) {
           {/* 時間區間 */}
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <Label className="flex items-center gap-2 text-slate-600">
+              <Label className="flex items-center gap-2 text-muted-foreground dark:text-white">
                 <Calendar size={16} /> 開始日期
               </Label>
               <Input 
@@ -118,7 +118,7 @@ export function SettlementDialog({ records }: SettlementDialogProps) {
               />
             </div>
             <div className="grid gap-2">
-              <Label className="flex items-center gap-2 text-slate-600">
+              <Label className="flex items-center gap-2 text-muted-foreground dark:text-white">
                 <Calendar size={16} /> 結束日期
               </Label>
               <Input 
@@ -132,7 +132,7 @@ export function SettlementDialog({ records }: SettlementDialogProps) {
 
           {/* 單價設定 */}
           <div className="grid gap-2">
-            <Label className="flex items-center gap-2 text-slate-600">
+            <Label className="flex items-center gap-2 text-muted-foreground dark:text-white">
               <DollarSign size={16} /> 單桶價格 (元)
             </Label>
             <Input 
@@ -144,18 +144,18 @@ export function SettlementDialog({ records }: SettlementDialogProps) {
             />
           </div>
 
-          <hr className="border-slate-100" />
+          <hr className="border-border" />
 
           {/* 結算結果展示 */}
-          <div className="bg-slate-50 rounded-2xl p-6 border-2 border-dashed border-slate-200">
-             <div className="grid grid-cols-2 gap-4 divide-x divide-slate-200 text-center">
+          <div className="bg-muted/30 dark:bg-muted/10 rounded-2xl p-6 border-2 border-dashed border-border">
+             <div className="grid grid-cols-2 gap-4 divide-x divide-border text-center">
                 <div>
-                  <p className="text-sm text-slate-500 mb-1">總計領取</p>
-                  <p className="text-3xl font-black text-slate-800">{stats.totalQuantity} <span className="text-lg font-normal">桶</span></p>
+                   <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">總計領取</p>
+                   <p className="text-3xl font-black text-foreground">{stats.totalQuantity} <span className="text-lg font-normal">桶</span></p>
                 </div>
                 <div>
-                  <p className="text-sm text-slate-500 mb-1">應收總額</p>
-                  <p className="text-3xl font-black text-blue-600"><span className="text-lg font-normal mr-1">$</span>{stats.totalPrice.toLocaleString()}</p>
+                   <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">應收總額</p>
+                   <p className="text-3xl font-black text-blue-600 dark:text-blue-500"><span className="text-lg font-normal mr-1">$</span>{stats.totalPrice.toLocaleString()}</p>
                 </div>
              </div>
              <p className="text-center text-xs text-slate-400 mt-4">
@@ -164,7 +164,7 @@ export function SettlementDialog({ records }: SettlementDialogProps) {
           </div>
         </div>
         
-        <div className="text-center text-[10px] text-slate-300">
+        <div className="text-center text-[10px] text-slate-400 dark:text-slate-500">
           * 結算結果僅供參考，請以實際收支為準。
         </div>
       </DialogContent>

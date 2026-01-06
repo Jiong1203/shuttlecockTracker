@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Loader2, ShieldCheck, Users } from 'lucide-react'
 import Image from 'next/image'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 export default function LoginPage() {
   const [account, setAccount] = useState('')
@@ -133,19 +134,24 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      {/* Theme Toggle in top right */}
+      <div className="fixed top-4 right-4 z-50">
+        <ThemeToggle />
+      </div>
+
       {/* Decorative background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[10%] left-[15%] w-[30%] h-[30%] bg-blue-400/10 blur-[100px] rounded-full" />
         <div className="absolute bottom-[10%] right-[15%] w-[30%] h-[30%] bg-indigo-400/10 blur-[100px] rounded-full" />
       </div>
 
-      <Card className="w-full max-w-md border-slate-200 bg-white shadow-xl relative overflow-hidden">
+      <Card className="w-full max-w-md border-border bg-card shadow-xl relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600" />
         
         <CardHeader className="space-y-2 pt-10 pb-6 text-center">
           <div className="flex justify-center mb-4">
-            <div className="p-1 bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm overflow-hidden flex items-center justify-center">
+            <div className="p-1 bg-card rounded-2xl ring-1 ring-border shadow-sm overflow-hidden flex items-center justify-center">
               <Image 
                 src="/icon.png" 
                 alt="App Icon" 
@@ -155,10 +161,10 @@ export default function LoginPage() {
               />
             </div>
           </div>
-          <CardTitle className="text-3xl font-black tracking-tight text-slate-900">
+          <CardTitle className="text-3xl font-black tracking-tight text-foreground">
             {isSignUp ? '建立您的球團' : '羽球庫存共享小幫手'}
           </CardTitle>
-          <CardDescription className="text-slate-500 text-base font-medium">
+          <CardDescription className="text-muted-foreground text-base font-medium">
             {isSignUp ? '註冊後即可開始管理球團庫存' : '請登入球團帳號以繼續'}
           </CardDescription>
         </CardHeader>
@@ -167,7 +173,7 @@ export default function LoginPage() {
           <CardContent className="space-y-6 pb-2">
             {isSignUp && (
               <div className="space-y-2.5">
-                <Label htmlFor="group" className="text-slate-800 font-bold text-sm ml-1 select-none">球團名稱</Label>
+                <Label htmlFor="group" className="text-foreground font-bold text-sm ml-1 select-none">球團名稱</Label>
                 <div className="relative">
                   <Input 
                     id="group" 
@@ -175,25 +181,25 @@ export default function LoginPage() {
                     value={groupName}
                     onChange={(e) => setGroupName(e.target.value)}
                     required
-                    className="bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:ring-blue-500/20 focus:border-blue-500 pl-10 h-12 rounded-xl transition-all"
+                    className="bg-muted/50 border-border text-foreground placeholder:text-muted-foreground focus:ring-blue-500/20 focus:border-blue-500 pl-10 h-12 rounded-xl transition-all"
                   />
-                  <Users className="absolute left-3.5 top-3.5 h-5 w-5 text-slate-400" />
+                  <Users className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" />
                 </div>
               </div>
             )}
             <div className="space-y-2.5">
-              <Label htmlFor="account" className="text-slate-800 font-bold text-sm ml-1 select-none">球團帳號</Label>
+              <Label htmlFor="account" className="text-foreground font-bold text-sm ml-1 select-none">球團帳號</Label>
               <Input 
                 id="account" 
                 placeholder="例如：mygroup_admin" 
                 value={account}
                 onChange={(e) => setAccount(e.target.value)}
                 required
-                className="bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:ring-blue-500/20 focus:border-blue-500 h-12 rounded-xl transition-all"
+                className="bg-muted/50 border-border text-foreground placeholder:text-muted-foreground focus:ring-blue-500/20 focus:border-blue-500 h-12 rounded-xl transition-all"
               />
             </div>
             <div className="space-y-2.5">
-              <Label htmlFor="password" className="text-slate-800 font-bold text-sm ml-1 select-none">密碼</Label>
+              <Label htmlFor="password" className="text-foreground font-bold text-sm ml-1 select-none">密碼</Label>
               <Input 
                 id="password" 
                 type="password" 
@@ -201,7 +207,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:ring-blue-500/20 focus:border-blue-500 h-12 rounded-xl transition-all"
+                className="bg-muted/50 border-border text-foreground placeholder:text-muted-foreground focus:ring-blue-500/20 focus:border-blue-500 h-12 rounded-xl transition-all"
               />
             </div>
 
@@ -210,13 +216,13 @@ export default function LoginPage() {
                 <input
                   type="checkbox"
                   id="remember"
-                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 transition-all cursor-pointer"
+                  className="h-4 w-4 rounded border-border bg-muted/50 text-blue-600 focus:ring-blue-500 transition-all cursor-pointer"
                   checked={rememberAccount}
                   onChange={(e) => setRememberAccount(e.target.checked)}
                 />
                 <label
                   htmlFor="remember"
-                  className="text-sm font-semibold text-slate-600 cursor-pointer select-none"
+                  className="text-sm font-semibold text-muted-foreground cursor-pointer select-none"
                 >
                   記住球團帳號
                 </label>
@@ -245,14 +251,14 @@ export default function LoginPage() {
                 setPassword('')
                 setGroupName('')
               }}
-              className="text-slate-500 hover:text-blue-600 text-sm font-semibold transition-colors duration-200 py-1"
+              className="text-muted-foreground hover:text-blue-600 dark:hover:text-blue-400 text-sm font-semibold transition-colors duration-200 py-1"
             >
               {isSignUp ? '已經有球團帳號？點此登入' : '還沒有建立球團？點此註冊新帳號'}
             </button>
           </CardFooter>
         </form>
 
-        <div className="bg-slate-50/50 py-4 flex items-center justify-center gap-2 text-[10px] text-slate-400 uppercase tracking-widest border-t border-slate-100">
+        <div className="bg-muted/50 py-4 flex items-center justify-center gap-2 text-[10px] text-foreground uppercase tracking-widest border-t border-border">
           <ShieldCheck className="w-3.5 h-3.5" />
           Secure Enterprise Authentication
         </div>
