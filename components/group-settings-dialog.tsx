@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Settings, ShieldCheck, KeyRound, Type, Loader2 } from "lucide-react"
+import { Settings, ShieldCheck, KeyRound, Type, Loader2, Mail } from "lucide-react"
 
 interface GroupSettingsDialogProps {
   currentGroupName: string
@@ -27,6 +27,7 @@ export function GroupSettingsDialog({ currentGroupName, onUpdateSuccess }: Group
   
   // States for form
   const [newName, setNewName] = useState(currentGroupName)
+  const [contactEmail, setContactEmail] = useState("")
   const [newLoginPassword, setNewLoginPassword] = useState("")
   const [currentRestockPassword, setCurrentRestockPassword] = useState("")
   const [newRestockPassword, setNewRestockPassword] = useState("")
@@ -39,6 +40,7 @@ export function GroupSettingsDialog({ currentGroupName, onUpdateSuccess }: Group
       fetchSettings()
       // 如果 props 已經更新了，就先用 props 的
       setNewName(currentGroupName)
+      setContactEmail("")
       setNewLoginPassword("")
       setCurrentRestockPassword("")
       setNewRestockPassword("")
@@ -52,6 +54,7 @@ export function GroupSettingsDialog({ currentGroupName, onUpdateSuccess }: Group
       const res = await fetch('/api/group')
       const data = await res.json()
       if (data.name) setNewName(data.name)
+      if (data.contactEmail) setContactEmail(data.contactEmail)
       setHasRestockPassword(data.hasRestockPassword)
     } catch (error) {
       console.error("Failed to fetch settings:", error)
@@ -72,6 +75,31 @@ export function GroupSettingsDialog({ currentGroupName, onUpdateSuccess }: Group
       if (!res.ok) throw new Error('更新失敗')
       alert('球團名稱更新成功')
       onUpdateSuccess(newName)
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : '更新失敗'
+      alert(message)
+    } finally {
+      setLoading(false)
+    }
+  }
+  
+  const handleUpdateContactEmail = async () => {
+    // 簡單的 Email 格式驗證
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (contactEmail && !emailRegex.test(contactEmail)) {
+      alert('請輸入有效的電子信箱格式')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const res = await fetch('/api/group', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contactEmail })
+      })
+      if (!res.ok) throw new Error('更新失敗')
+      alert('聯絡信箱更新成功')
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : '更新失敗'
       alert(message)
@@ -235,6 +263,34 @@ export function GroupSettingsDialog({ currentGroupName, onUpdateSuccess }: Group
               </Button>
             </div>
             <p className="text-[10px] text-slate-400">更新後，所有共用此帳號的成員皆需使用新密碼登入。</p>
+          </div>
+
+          <hr className="border-slate-100" />
+
+          {/* Contact Email Section */}
+          <div className="space-y-2">
+            <Label htmlFor="contact-email" className="flex items-center gap-2 text-slate-700 font-bold">
+              <Mail className="w-4 h-4" /> 聯絡信箱
+            </Label>
+            <div className="flex gap-2">
+              <Input
+                id="contact-email"
+                type="email"
+                placeholder="例如：abc@example.com"
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                className="flex-1"
+              />
+              <Button 
+                onClick={handleUpdateContactEmail} 
+                disabled={loading || !contactEmail}
+                variant="secondary"
+                size="sm"
+              >
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "更新"}
+              </Button>
+            </div>
+            <p className="text-[10px] text-slate-400">供未來開發相關通知或管理功能使用。</p>
           </div>
 
           <hr className="border-slate-100" />

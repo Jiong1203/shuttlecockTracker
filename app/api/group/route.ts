@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 
 interface GroupUpdates {
   name?: string;
+  contact_email?: string;
   restock_password?: string | null;
 }
 
@@ -29,7 +30,7 @@ export async function GET() {
 
     const { data: group, error } = await supabase
       .from('groups')
-      .select('name, restock_password')
+      .select('name, contact_email, restock_password')
       .eq('id', profile.group_id)
       .single()
 
@@ -37,6 +38,7 @@ export async function GET() {
 
     return NextResponse.json({
       name: group.name,
+      contactEmail: group.contact_email || "",
       hasRestockPassword: !!group.restock_password
     })
   } catch (error: unknown) {
@@ -54,7 +56,14 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { name, restockPassword, currentRestockPassword } = await request.json()
+    const { name, contactEmail, restockPassword, currentRestockPassword } = await request.json()
+
+    if (contactEmail !== undefined && contactEmail !== "") {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(contactEmail)) {
+        return NextResponse.json({ error: '無效的電子信箱格式' }, { status: 400 })
+      }
+    }
 
     const { data: profile } = await supabase
       .from('profiles')
@@ -76,6 +85,7 @@ export async function PATCH(request: Request) {
 
     const updates: GroupUpdates = {}
     if (name !== undefined) updates.name = name
+    if (contactEmail !== undefined) updates.contact_email = contactEmail
     
     if (restockPassword !== undefined || currentRestockPassword !== undefined) {
       // 驗證原密碼
