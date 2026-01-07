@@ -13,12 +13,14 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { PlusCircle, Loader2 } from "lucide-react"
+import { showToast } from "@/components/ui/toast"
 
 interface PickupFormProps {
   onSuccess: () => void
+  disabled?: boolean
 }
 
-export function PickupForm({ onSuccess }: PickupFormProps) {
+export function PickupForm({ onSuccess, disabled = false }: PickupFormProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [name, setName] = useState("")
@@ -54,13 +56,37 @@ export function PickupForm({ onSuccess }: PickupFormProps) {
     }
   }
 
+  const handleDisabledClick = () => {
+    if (disabled) {
+      showToast('請先完成入庫登記以設定初始庫存', 'warning', 3000)
+    }
+  }
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(newOpen) => {
+      if (disabled && newOpen) {
+        handleDisabledClick()
+        return
+      }
+      setOpen(newOpen)
+    }}>
       <DialogTrigger asChild>
-        <Button size="lg" className="flex-1 min-w-[120px] flex gap-2 h-14 text-base font-bold shadow-md hover:shadow-xl transition-all bg-blue-600 hover:bg-blue-700">
-          <PlusCircle size={20} />
-          領取登記
-        </Button>
+        <div className="flex-1 min-w-[120px]">
+          <Button 
+            size="lg" 
+            disabled={disabled}
+            onClick={disabled ? handleDisabledClick : undefined}
+            className="w-full flex gap-2 h-14 text-base font-bold shadow-md hover:shadow-xl transition-all bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <PlusCircle size={20} />
+            領取登記
+          </Button>
+          {disabled && (
+            <p className="text-xs text-orange-600 dark:text-orange-400 mt-1 text-center font-medium">
+              ⚠️ 請先完成入庫登記
+            </p>
+          )}
+        </div>
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-[425px]">

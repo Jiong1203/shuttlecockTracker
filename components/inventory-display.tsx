@@ -24,7 +24,13 @@ export function InventoryDisplay({ initialStock, totalPicked, currentStock }: In
           <span className="text-2xl ml-2 font-normal text-muted-foreground">桶</span>
         </div>
         
-        {isLowStock && (
+        {currentStock === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-2 text-orange-600 dark:text-orange-400 font-bold mt-4 bg-orange-50 dark:bg-orange-950/30 p-4 rounded-lg border border-orange-200 dark:border-orange-900/50">
+            <AlertCircle size={24} />
+            <p className="text-sm">⚠️ 尚未設定初始庫存</p>
+            <p className="text-xs font-normal text-muted-foreground">👉 請點擊「入庫登記」開始使用</p>
+          </div>
+        ) : isLowStock && (
           <div className="flex items-center justify-center gap-2 text-red-500 font-bold animate-pulse mt-4 bg-red-50 dark:bg-red-950/30 p-2 rounded-lg border border-red-100 dark:border-red-900/50">
             <AlertCircle size={20} />
             庫存不足！請儘速補貨

@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { InventoryDisplay } from "@/components/inventory-display"
 import { PickupForm } from "@/components/pickup-form"
 import { SettlementDialog } from "@/components/settlement-dialog"
-import { RestockForm } from "@/components/restock-form"
+import { RestockForm, RestockFormRef } from "@/components/restock-form"
 import { PickupHistory } from "@/components/pickup-history"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
@@ -14,8 +14,11 @@ import { Loader2, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { GroupSettingsDialog } from "@/components/group-settings-dialog"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { WelcomeGuide } from "@/components/welcome-guide"
+import { ToastContainer } from "@/components/ui/toast"
 
 export default function Home() {
+  const restockFormRef = useRef<RestockFormRef>(null)
   const [inventory, setInventory] = useState<{
     initial_stock: number;
     total_picked: number;
@@ -151,21 +154,32 @@ export default function Home() {
         </header>
 
         {inventory && (
-          <InventoryDisplay 
-            initialStock={inventory.initial_stock}
-            totalPicked={inventory.total_picked}
-            currentStock={inventory.current_stock}
-          />
+          <>
+            <InventoryDisplay 
+              initialStock={inventory.initial_stock}
+              totalPicked={inventory.total_picked}
+              currentStock={inventory.current_stock}
+            />
+            
+            {inventory.current_stock === 0 && (
+              <WelcomeGuide 
+                currentStock={inventory.current_stock} 
+                onStartSetup={() => restockFormRef.current?.open()}
+              />
+            )}
+          </>
         )}
 
         <div className="flex flex-row justify-center items-center gap-3 w-full max-w-2xl mx-auto">
-           <PickupForm onSuccess={fetchData} />
+           <PickupForm onSuccess={fetchData} disabled={inventory?.current_stock === 0} />
            <SettlementDialog records={records} />
-           <RestockForm onSuccess={fetchData} />
+           <RestockForm ref={restockFormRef} onSuccess={fetchData} shouldHighlight={inventory?.current_stock === 0} />
         </div>
         <div className="w-full max-w-2xl mx-auto">
            <PickupHistory records={records} onDelete={fetchData} />
         </div>
+
+        <ToastContainer />
 
         <footer className="py-12 text-center text-slate-300 text-sm">
           &copy; 2025 動資訊有限公司 Active Info Co., Ltd. All rights reserved.

@@ -80,12 +80,11 @@ export default function LoginPage() {
 
           if (profileError) throw profileError
 
-          // Initialize Inventory
           await supabase
             .from('inventory_config')
             .insert({
               group_id: groupData.id,
-              initial_quantity: 100,
+              initial_quantity: 0,
             })
           
           alert('球團帳號建立成功！現在可以使用該帳號進行登入。')

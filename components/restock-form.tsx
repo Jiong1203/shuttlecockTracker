@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from "react"
+import { useState, forwardRef, useImperativeHandle } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -16,9 +16,14 @@ import { PackagePlus, Lock, Loader2, CheckCircle2 } from "lucide-react"
 
 interface RestockFormProps {
   onSuccess: () => void
+  shouldHighlight?: boolean
 }
 
-export function RestockForm({ onSuccess }: RestockFormProps) {
+export interface RestockFormRef {
+  open: () => void
+}
+
+export const RestockForm = forwardRef<RestockFormRef, RestockFormProps>(function RestockForm({ onSuccess, shouldHighlight = false }, ref) {
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState<1 | 2 | 3>(1) // 1: 密碼, 2: 數量, 3: 二次確認
   const [loading, setLoading] = useState(false)
@@ -27,6 +32,14 @@ export function RestockForm({ onSuccess }: RestockFormProps) {
   const [password, setPassword] = useState("")
   const [amount, setAmount] = useState("10")
   const [error, setError] = useState<string | null>(null)
+
+  // Expose open method to parent via ref
+  useImperativeHandle(ref, () => ({
+    open: () => {
+      setOpen(true)
+      checkSecurity()
+    }
+  }))
 
   // 檢查是否需要密碼（目前恆定需要，至少是 1111）
   const checkSecurity = async () => {
@@ -140,7 +153,11 @@ export function RestockForm({ onSuccess }: RestockFormProps) {
       }
     }}>
       <DialogTrigger asChild>
-        <Button size="lg" className="flex-1 min-w-[120px] flex gap-2 h-14 text-base font-bold shadow-md hover:shadow-xl transition-all bg-emerald-600 hover:bg-emerald-700 text-white border-0">
+        <Button 
+          size="lg" 
+          data-restock-button
+          className={`flex-1 min-w-[120px] flex gap-2 h-14 text-base font-bold shadow-md hover:shadow-xl transition-all bg-emerald-600 hover:bg-emerald-700 text-white border-0 ${shouldHighlight ? 'pulse-highlight' : ''}`}
+        >
           <PackagePlus size={20} />
           入庫登記
         </Button>
@@ -236,5 +253,4 @@ export function RestockForm({ onSuccess }: RestockFormProps) {
       </DialogContent>
     </Dialog>
   )
-}
-
+})
