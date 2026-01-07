@@ -109,3 +109,12 @@
   }
 }
 
+@layer components {
+  .group-name-block {
+    background-color: oklch(0.97 0.01 250); /* Light mode - light blue */
+  }
+
+  .dark .group-name-block {
+    background-color: oklch(0.27 0 0); /* Dark mode - user specified color */
+  }
+}

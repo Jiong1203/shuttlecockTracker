@@ -198,9 +198,9 @@ export function GroupSettingsDialog({ currentGroupName, onUpdateSuccess }: Group
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
+        <Button variant="outline" size="sm" className="gap-2 px-2 sm:px-3">
           <Settings className="w-4 h-4" />
-          帳號設定
+          <span className="hidden sm:inline">帳號設定</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">

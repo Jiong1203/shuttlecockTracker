@@ -100,62 +100,54 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-8">
-        <header className="flex flex-col md:flex-row justify-between items-center bg-card p-6 rounded-2xl shadow-sm border border-border gap-4">
-          <div className="text-center md:text-left">
-            <h1 className="text-3xl font-black text-foreground tracking-tight">羽球庫存共享小幫手</h1>
-            <div className="flex items-center justify-center md:justify-start gap-2 mt-1">
-              <span className="bg-blue-600 dark:bg-blue-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full tracking-wider shadow-sm uppercase">Beta</span>
-              <span className="text-muted-foreground text-sm font-semibold tracking-tight">Shuttlecock Tracker</span>
+        <header className="bg-card p-5 md:p-6 rounded-2xl shadow-sm border border-border space-y-4">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="text-center md:text-left">
+              <h1 className="text-2xl md:text-3xl font-black text-foreground tracking-tight">羽球庫存共享小幫手</h1>
+              <div className="flex items-center justify-center md:justify-start gap-2 mt-1">
+                <span className="bg-blue-600 dark:bg-blue-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full tracking-wider shadow-sm uppercase">Beta</span>
+                <span className="text-muted-foreground text-sm font-semibold tracking-tight">Shuttlecock Tracker</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 bg-muted/40 p-1.5 rounded-xl border border-border/50">
+              <ThemeToggle />
+              <GroupSettingsDialog 
+                currentGroupName={group?.name || ""} 
+                onUpdateSuccess={(newName) => {
+                  if (newName) {
+                    setGroup(prev => prev ? { ...prev, name: newName } : null)
+                  }
+                  fetchUser();
+                  fetchData();
+                }} 
+              />
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleLogout}
+                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-2 transition-all px-2 md:px-3"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="hidden md:inline">登出系統</span>
+              </Button>
             </div>
           </div>
 
-          <div className="flex items-center gap-4 bg-muted/50 p-2 pl-4 rounded-xl border border-border">
-            {group ? (
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground text-xs font-bold uppercase tracking-wider">球團 :</span>
-                <span className="text-blue-600 font-bold px-3 py-1 bg-muted rounded-lg ring-1 ring-border">
-                  {group.name}
-                </span>
-                <div className="h-4 w-px bg-slate-200 dark:bg-slate-600 mx-1 hidden sm:block" />
-                <ThemeToggle />
-                <GroupSettingsDialog 
-                  currentGroupName={group.name} 
-                  onUpdateSuccess={(newName) => {
-                    if (newName) {
-                      setGroup(prev => prev ? { ...prev, name: newName } : null)
-                    }
-                    fetchUser();
-                    fetchData();
-                  }} 
-                />
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={handleLogout}
-                  className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-2 transition-all"
-                >
-                  <LogOut className="w-4 h-4" />
-                  登出
-                </Button>
+          {group ? (
+            <div className="group-name-block flex flex-col sm:flex-row items-center gap-3 p-3 md:p-4 rounded-xl border border-blue-100 dark:border-blue-400/30 shadow-sm dark:shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-md">
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="bg-blue-600 dark:bg-blue-500 text-white text-[10px] font-black px-2 py-0.5 rounded-md tracking-widest uppercase shadow-sm shadow-blue-500/30">當前球團</span>
               </div>
-            ) : (
-              <div className="flex items-center gap-4">
-                <div className="text-right hidden sm:block">
-                  <p className="text-xs text-muted-foreground font-bold uppercase tracking-tighter">當前球團</p>
-                  <p className="text-foreground font-black">未載入</p>
-                </div>
-                <div className="h-10 w-px bg-border mx-2 hidden sm:block" />
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={handleLogout}
-                  className="text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all rounded-full"
-                >
-                  <LogOut className="h-5 w-5" />
-                </Button>
+              <div className="text-blue-600 dark:text-blue-200 font-bold text-lg md:text-xl text-center sm:text-left break-words w-full tracking-tight drop-shadow-sm">
+                {group.name}
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-100 dark:border-border italic text-muted-foreground text-sm justify-center sm:justify-start">
+              未載入球團資訊...
+            </div>
+          )}
         </header>
 
         {inventory && (
