@@ -199,4 +199,57 @@
     border-color: oklch(0.35 0.10 250);
     color: oklch(0.75 0.12 250);
   }
+
+  /* Settings Dialog Styling */
+  .settings-card {
+    background-color: oklch(0.98 0 0);
+    border-color: oklch(0.95 0 0);
+  }
+
+  .dark .settings-card {
+    background-color: oklch(0.25 0 0);
+    border-color: oklch(0.35 0 0);
+  }
+
+  .status-badge-success {
+    background-color: oklch(0.95 0.05 145);
+    border-color: oklch(0.90 0.05 145);
+    color: oklch(0.40 0.15 145);
+  }
+
+  .dark .status-badge-success {
+    background-color: oklch(0.25 0.05 145);
+    border-color: oklch(0.35 0.05 145);
+    color: oklch(0.80 0.10 145);
+  }
+
+  .status-badge-default {
+    background-color: oklch(0.95 0 0);
+    border-color: oklch(0.90 0 0);
+    color: oklch(0.45 0 0);
+  }
+
+  .dark .status-badge-default {
+    background-color: oklch(0.30 0 0);
+    border-color: oklch(0.40 0 0);
+    color: oklch(0.80 0 0);
+  }
+
+  /* Settings Button Styling */
+  .settings-button {
+    background-color: oklch(1 0 0); /* White for light mode */
+    border-color: oklch(0.90 0 0);
+    color: oklch(0.30 0 0);
+  }
+
+  .dark .settings-button {
+    background-color: oklch(0.30 0 0); /* Darker shade for dark mode */
+    border-color: oklch(0.40 0 0);
+    color: oklch(0.90 0 0);
+  }
+
+  .dark .settings-button:hover {
+    background-color: oklch(0.35 0 0);
+    border-color: oklch(0.45 0 0);
+  }
 }

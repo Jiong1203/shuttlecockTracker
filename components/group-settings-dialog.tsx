@@ -301,21 +301,21 @@ export function GroupSettingsDialog({ currentGroupName, onUpdateSuccess }: Group
               <ShieldCheck className="w-4 h-4" /> 入庫管理密碼
             </Label>
             
-            <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-border min-h-[100px] flex flex-col justify-center">
+            <div className="settings-card p-4 rounded-xl border min-h-[100px] flex flex-col justify-center">
               {restockStep === 'info' ? (
                 <div className="flex flex-col items-center gap-3">
                   <div className="flex items-center gap-2 text-sm font-medium">
                     {hasRestockPassword ? (
-                      <span className="text-emerald-600 dark:text-emerald-500 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded border border-emerald-100 dark:border-emerald-900/50">已啟用自訂密碼防護</span>
+                      <span className="status-badge-success px-2 py-0.5 rounded border">已啟用自訂密碼防護</span>
                     ) : (
-                      <span className="text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">目前使用系統預設碼 (1111)</span>
+                      <span className="status-badge-default px-2 py-0.5 rounded border">目前使用系統預設碼 (1111)</span>
                     )}
                   </div>
                   <Button 
                     variant="outline" 
                     size="sm" 
                     onClick={() => setRestockStep('verify')}
-                    className="w-full bg-white"
+                    className="w-full settings-button"
                   >
                     修改入庫密碼
                   </Button>
@@ -332,7 +332,7 @@ export function GroupSettingsDialog({ currentGroupName, onUpdateSuccess }: Group
                       placeholder="請輸入原密碼"
                       value={currentRestockPassword}
                       onChange={(e) => setCurrentRestockPassword(e.target.value)}
-                      className="bg-white h-9"
+                      className="h-9"
                       autoFocus
                     />
                   </div>
@@ -364,7 +364,7 @@ export function GroupSettingsDialog({ currentGroupName, onUpdateSuccess }: Group
                       placeholder="請輸入新密碼"
                       value={newRestockPassword}
                       onChange={(e) => setNewRestockPassword(e.target.value)}
-                      className="bg-white h-9"
+                      className="h-9"
                       autoFocus
                     />
                   </div>
