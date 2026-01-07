@@ -126,3 +126,7 @@ CREATE POLICY "Group members can access inventory_config" ON public.inventory_co
 -- Pickup Records: 只有同團體的人可以讀寫
 CREATE POLICY "Group members can access pickup_records" ON public.pickup_records
     FOR ALL USING (group_id = (SELECT group_id FROM public.profiles WHERE id = auth.uid()));
+
+-- 修改現有的視圖，將其安全性設定為 invoker
+alter view public.inventory_summary 
+set (security_invoker = on);

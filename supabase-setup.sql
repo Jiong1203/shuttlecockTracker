@@ -95,3 +95,7 @@ CREATE POLICY "Group members can access pickup_records" ON public.pickup_records
 
 -- 8. 自動為新使用者建立 Profile 的 Trigger (選用)
 -- 這部分可以在前端註冊時處理，或者用 DB Trigger
+
+-- 修改現有的視圖，將其安全性設定為 invoker
+alter view public.inventory_summary 
+set (security_invoker = on);
