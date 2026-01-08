@@ -46,11 +46,11 @@ export function InventoryDisplay({ stocks, currentStock }: InventoryDisplayProps
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="w-full max-w-4xl mx-auto flex flex-wrap justify-center gap-4">
       {stocks.map((stock) => {
         const isLowStock = stock.current_stock < 5
         return (
-            <Card key={stock.shuttlecock_type_id} className="overflow-hidden border-border bg-card shadow-sm transition-all hover:shadow-xl rounded-2xl">
+            <Card key={stock.shuttlecock_type_id} className="w-full md:w-[calc(50%-0.5rem)] overflow-hidden border-border bg-card shadow-sm transition-all hover:shadow-xl rounded-2xl">
             <CardHeader className="pt-6 pb-0">
                 <CardTitle className="text-center text-slate-400 dark:text-slate-500 font-bold text-sm tracking-widest uppercase">
                     {stock.brand} {stock.name}
