@@ -19,11 +19,7 @@ import { ToastContainer } from "@/components/ui/toast"
 
 export default function Home() {
   const restockFormRef = useRef<RestockFormRef>(null)
-  const [inventory, setInventory] = useState<{
-    initial_stock: number;
-    total_picked: number;
-    current_stock: number;
-  } | null>(null)
+  const [inventory, setInventory] = useState<any[] | null>(null)
   const [records, setRecords] = useState([])
   const [loading, setLoading] = useState(true)
   const [group, setGroup] = useState<{ name: string } | null>(null)
@@ -51,7 +47,7 @@ export default function Home() {
       const invData = await invRes.json()
       const pickData = await pickRes.json()
       
-      setInventory(invData)
+      setInventory(Array.isArray(invData) ? invData : [invData]) // Fallback compatibility if needed
       setRecords(pickData)
     } catch (error) {
       console.error("Fetch data error:", error)
@@ -90,6 +86,13 @@ export default function Home() {
     await supabase.auth.signOut()
     router.push('/login')
   }
+
+  const getTotalCurrentStock = () => {
+      if (!inventory) return 0;
+      return inventory.reduce((acc, item) => acc + (item.current_stock || 0), 0);
+  }
+
+  const totalCurrentStock = getTotalCurrentStock();
 
   if (loading) {
     return (
@@ -155,15 +158,11 @@ export default function Home() {
 
         {inventory && (
           <>
-            <InventoryDisplay 
-              initialStock={inventory.initial_stock}
-              totalPicked={inventory.total_picked}
-              currentStock={inventory.current_stock}
-            />
+            <InventoryDisplay stocks={inventory} />
             
-            {inventory.current_stock === 0 && (
+            {totalCurrentStock === 0 && (
               <WelcomeGuide 
-                currentStock={inventory.current_stock} 
+                currentStock={0} 
                 onStartSetup={() => restockFormRef.current?.open()}
               />
             )}
@@ -171,9 +170,9 @@ export default function Home() {
         )}
 
         <div className="flex flex-row justify-center items-center gap-3 w-full max-w-2xl mx-auto">
-           <PickupForm onSuccess={fetchData} disabled={inventory?.current_stock === 0} />
+           <PickupForm onSuccess={fetchData} disabled={totalCurrentStock === 0} />
            <SettlementDialog records={records} />
-           <RestockForm ref={restockFormRef} onSuccess={fetchData} shouldHighlight={inventory?.current_stock === 0} />
+           <RestockForm ref={restockFormRef} onSuccess={fetchData} shouldHighlight={totalCurrentStock === 0} />
         </div>
         <div className="w-full max-w-2xl mx-auto">
            <PickupHistory records={records} onDelete={fetchData} />

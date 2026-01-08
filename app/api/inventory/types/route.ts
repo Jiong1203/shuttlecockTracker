@@ -27,9 +27,10 @@ export async function GET() {
     }
 
     const { data, error } = await supabase
-      .from('pickup_records')
+      .from('shuttlecock_types')
       .select('*')
       .eq('group_id', groupId)
+      .eq('is_active', true)
       .order('created_at', { ascending: false })
 
     if (error) {
@@ -37,7 +38,8 @@ export async function GET() {
     }
 
     return NextResponse.json(data)
-  } catch {
+  } catch (err) {
+      console.error("Error fetching types:", err)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }
@@ -50,23 +52,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { picker_name, quantity, type_id } = await request.json()
+    const { brand, name } = await request.json()
 
-    if (!picker_name || !quantity) {
-      return NextResponse.json({ error: 'Missing name or quantity' }, { status: 400 })
-    }
-    
-    if (!type_id) {
-       return NextResponse.json({ error: 'Missing type_id' }, { status: 400 })
+    if (!brand || !name) {
+      return NextResponse.json({ error: 'Missing brand or name' }, { status: 400 })
     }
 
     const { data, error } = await supabase
-      .from('pickup_records')
+      .from('shuttlecock_types')
       .insert([{ 
-        picker_name, 
-        quantity, 
         group_id: groupId, 
-        shuttlecock_type_id: type_id 
+        brand, 
+        name,
+        created_by: (await supabase.auth.getUser()).data.user?.id
       }])
       .select()
       .single()
@@ -76,38 +74,8 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(data)
-  } catch {
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
-  }
-}
-
-export async function DELETE(request: Request) {
-  const supabase = await createClient()
-  try {
-    const groupId = await getGroupId(supabase)
-    if (!groupId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const { searchParams } = new URL(request.url)
-    const id = searchParams.get('id')
-
-    if (!id) {
-      return NextResponse.json({ error: 'Missing record ID' }, { status: 400 })
-    }
-
-    const { error } = await supabase
-      .from('pickup_records')
-      .delete()
-      .eq('id', id)
-      .eq('group_id', groupId)
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-
-    return NextResponse.json({ message: 'Record deleted successfully' })
-  } catch {
+  } catch (err) {
+    console.error("Error creating type:", err)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }

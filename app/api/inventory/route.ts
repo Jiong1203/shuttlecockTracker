@@ -27,7 +27,6 @@ export async function GET() {
       .from('inventory_summary')
       .select('*')
       .eq('group_id', profile.group_id)
-      .single()
 
     if (error) {
       console.error('Error fetching inventory summary:', error)
