@@ -40,7 +40,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { start_date, end_date } = await request.json()
+    const { start_date, end_date, picker_name } = await request.json()
 
     // 1. 獲取所有入庫紀錄 (依時間排序)
     const { data: restocks, error: restockError } = await supabase
@@ -86,9 +86,10 @@ export async function POST(request: Request) {
             let quantityToPick = pickup.quantity;
             let currentPickupCost = 0;
             
-            // 判斷該領取是否在查詢區間內
+            // 判斷該領取是否在查詢區間內，且符合姓名篩選
             const isWithinPeriod = (!start_date || new Date(pickup.created_at) >= new Date(start_date)) &&
-                                   (!end_date || new Date(pickup.created_at) <= new Date(end_date));
+                                   (!end_date || new Date(pickup.created_at) <= new Date(end_date)) &&
+                                   (!picker_name || pickup.picker_name.includes(picker_name));
 
             while (quantityToPick > 0) {
                 // 找最早且還有剩餘的批次

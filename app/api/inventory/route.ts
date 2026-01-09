@@ -13,13 +13,18 @@ export async function GET() {
     }
 
     // 取得使用者的 group_id
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('group_id')
       .eq('id', user.id)
       .single()
 
-    if (!profile?.group_id) {
+    if (profileError || !profile?.group_id) {
+      console.error('Inventory API 403 debug:', { 
+        userId: user.id, 
+        profileError, 
+        profile 
+      })
       return NextResponse.json({ error: 'User has no group assigned' }, { status: 403 })
     }
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Calculator, Calendar } from "lucide-react"
+import { Calculator, Calendar, User } from "lucide-react"
 
 interface UsedBatch {
     price: number
@@ -31,14 +31,19 @@ interface SettlementResult {
 }
 
 interface SettlementDialogProps {
-  records?: any[] // Keep for compatibility if parent passes it, but strictly unused here.
+  records?: any[] 
 }
 
-export function SettlementDialog({ records: _ }: SettlementDialogProps) {
+export function SettlementDialog({ records }: SettlementDialogProps) {
   const [startDate, setStartDate] = useState<string>("")
   const [endDate, setEndDate] = useState<string>("")
+  const [name, setName] = useState<string>("")
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<SettlementResult | null>(null)
+
+  const uniquePickers = useMemo(() => {
+    return Array.from(new Set(records?.map((r: any) => r.picker_name).filter(Boolean) as string[]))
+  }, [records])
 
   const handleCalculate = async () => {
       setLoading(true)
@@ -46,7 +51,7 @@ export function SettlementDialog({ records: _ }: SettlementDialogProps) {
           const res = await fetch('/api/settlement/calculate', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ start_date: startDate, end_date: endDate })
+              body: JSON.stringify({ start_date: startDate, end_date: endDate, picker_name: name })
           })
           if (!res.ok) throw new Error("Calculation failed")
           const data = await res.json()
@@ -59,10 +64,6 @@ export function SettlementDialog({ records: _ }: SettlementDialogProps) {
       }
   }
 
-  // Auto calculate when dates change? Or manual? Manual is better for clarity.
-  // Actually, let's trigger on open or date change debounced? 
-  // For now, let's keep it simple: Button to calculate.
-
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -72,12 +73,11 @@ export function SettlementDialog({ records: _ }: SettlementDialogProps) {
         </Button>
       </DialogTrigger>
 
-
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-2xl font-black">
             <Calculator className="text-blue-500" />
-            <span className="dark:text-white">先進先出 (FIFO) 成本試算</span>
+            <span className="dark:text-white">結算試算</span>
           </DialogTitle>
         </DialogHeader>
         
@@ -108,6 +108,22 @@ export function SettlementDialog({ records: _ }: SettlementDialogProps) {
             </div>
           </div>
 
+          <div className="grid gap-2">
+             <Label className="flex items-center gap-2 text-muted-foreground dark:text-white">
+                <User size={16} /> 領取人 (選填)
+             </Label>
+             <select
+                className="flex h-12 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+             >
+                <option value="">全部領取人</option>
+                {uniquePickers.map((picker, idx) => (
+                    <option key={idx} value={picker}>{picker}</option>
+                ))}
+             </select>
+          </div>
+
           <Button onClick={handleCalculate} disabled={loading} className="w-full h-12 text-lg font-bold">
               {loading ? "計算中..." : "開始計算"}
           </Button>
@@ -130,21 +146,6 @@ export function SettlementDialog({ records: _ }: SettlementDialogProps) {
                       {result.details.map((detail: any) => (
                           <div key={detail.type_id} className="bg-card border border-border p-4 rounded-xl shadow-sm">
                               <div className="flex justify-between items-center mb-2">
-                                  {/* We might need to fetch type name or pass it from parent if possible. 
-                                      The API returns type_id. We can try to look it up if we have context, 
-                                      or update API to return names. 
-                                      For now, let's rely on API potentially returning names? 
-                                      Wait, my API implementation ONLY returns type_id. 
-                                      I should update API to return names too. 
-                                      Or simpler: Just show "Type ID:" for now or update API.
-                                      I will update API later if needed, but for now let's hope I can map it or just show ID is ugly.
-                                      Actually I can iterate records to find the name? No, records is empty if filtered?
-                                      Let's assume the API returns brand/name by joining. I didn't verify that part of API code.
-                                      Let's check API code I wrote... I wrote: `result_details.push({ type_id: typeId ... })`.
-                                      I did NOT return names. This is bad UX.
-                                      I should fix API to return names.
-                                      For now, I'll display simple info.
-                                  */}
                                   <span className="font-bold">消耗量: {detail.total_quantity} 桶</span>
                                   <span className="font-bold text-emerald-600">${detail.total_cost.toLocaleString()}</span>
                               </div>

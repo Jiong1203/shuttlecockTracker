@@ -60,6 +60,19 @@ export async function POST(request: Request) {
        return NextResponse.json({ error: 'Missing type_id' }, { status: 400 })
     }
 
+    // Check current stock
+    const { data: stockData } = await supabase
+      .from('inventory_summary')
+      .select('current_stock')
+      .eq('group_id', groupId)
+      .eq('shuttlecock_type_id', type_id)
+      .single()
+
+    const currentStock = stockData?.current_stock || 0
+    if (quantity > currentStock) {
+        return NextResponse.json({ error: `庫存不足，目前僅剩 ${currentStock} 桶` }, { status: 400 })
+    }
+
     const { data, error } = await supabase
       .from('pickup_records')
       .insert([{ 

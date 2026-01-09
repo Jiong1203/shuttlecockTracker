@@ -1,0 +1,394 @@
+'use client'
+
+import { useState, useEffect, useCallback } from "react"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { 
+  Package, 
+  History, 
+  PlusCircle, 
+  Search, 
+  Archive, 
+  Loader2, 
+  CheckCircle2, 
+  Lock,
+  PackagePlus
+} from "lucide-react"
+import { ShuttlecockTypeManager } from "./shuttlecock-type-manager"
+
+interface InventoryManagerDialogProps {
+  // We can pass initial data if we want, but fetching fresh inside might be safer for consistency
+  trigger?: React.ReactNode
+  onUpdate?: () => void
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}
+
+export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen, onOpenChange }: InventoryManagerDialogProps) {
+  const [internalOpen, setInternalOpen] = useState(false)
+  const isOpen = controlledOpen ?? internalOpen
+  const setIsOpen = onOpenChange ?? setInternalOpen
+
+  const [activeTab, setActiveTab] = useState<'overview' | 'restock' | 'history'>('overview')
+  const [loading, setLoading] = useState(false)
+  
+  // Data States
+  const [inventory, setInventory] = useState<any[]>([])
+  const [history, setHistory] = useState<any[]>([])
+  
+  // Restock Form States
+  const [step, setStep] = useState<1 | 2 | 3>(1) 
+  const [restockPassword, setRestockPassword] = useState("")
+  const [hasRestockPassword, setHasRestockPassword] = useState(false)
+  const [types, setTypes] = useState<any[]>([])
+  const [selectedTypeId, setSelectedTypeId] = useState("")
+  const [amount, setAmount] = useState("10")
+  const [unitPrice, setUnitPrice] = useState("")
+  const [error, setError] = useState<string | null>(null)
+  const [formLoading, setFormLoading] = useState(false)
+
+  // Fetch Data Methods
+  const fetchInventory = useCallback(async () => {
+    try {
+      setLoading(true)
+      const res = await fetch('/api/inventory')
+      if (res.ok) setInventory(await res.json())
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  const fetchHistory = useCallback(async () => {
+    try {
+      setLoading(true)
+      const res = await fetch('/api/inventory/history')
+      if (res.ok) setHistory(await res.json())
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  const fetchTypes = async () => {
+    try {
+      const res = await fetch('/api/inventory/types')
+      const data = await res.json()
+      if (Array.isArray(data)) {
+        setTypes(data)
+        if (data.length > 0 && !selectedTypeId) setSelectedTypeId(data[0].id)
+      }
+    } catch (e) { console.error(e) }
+  }
+
+  const checkSecurity = async () => {
+      try {
+        const res = await fetch('/api/group')
+        const data = await res.json()
+        setHasRestockPassword(data.hasRestockPassword)
+        setStep(1)
+      } catch (e) { console.error(e) }
+  }
+
+  // Effect to load data when tab changes or dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      if (activeTab === 'overview') fetchInventory()
+      if (activeTab === 'history') fetchHistory()
+      if (activeTab === 'restock') {
+         checkSecurity()
+         fetchTypes()
+      }
+    }
+  }, [isOpen, activeTab, fetchInventory, fetchHistory])
+
+  // Restock logic
+  const handleVerifyPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setFormLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/group', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentRestockPassword: restockPassword })
+      })
+      if (!res.ok) throw new Error("密碼錯誤")
+      setStep(2)
+      if (types.length === 0) fetchTypes()
+    } catch (err: any) {
+      setError(err.message)
+      setRestockPassword("")
+    } finally {
+      setFormLoading(false)
+    }
+  }
+
+  const handleRestockSubmit = async () => {
+    setFormLoading(true)
+    setError(null)
+    try {
+        const res = await fetch('/api/inventory/restock', {
+            method: 'POST',
+            body: JSON.stringify({
+                password: restockPassword,
+                amount: parseInt(amount, 10),
+                type_id: selectedTypeId,
+                unit_price: unitPrice ? parseInt(unitPrice, 10) : 0
+            })
+        })
+        const data = await res.json()
+        if (res.ok) {
+            // Success
+            onUpdate?.() // trigger parent refresh
+            setStep(1)
+            setAmount("10")
+            setUnitPrice("")
+            setRestockPassword("")
+            setActiveTab('overview') // Switch back to overview to show update
+            fetchInventory() 
+        } else {
+            setError(data.error)
+            if (res.status === 401) {
+                setStep(1)
+                setRestockPassword("")
+            }
+        }
+    } catch (err) {
+        setError("連線錯誤")
+    } finally {
+        setFormLoading(false)
+    }
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        {trigger || (
+             <Button 
+                size="lg" 
+                className="flex-1 min-w-[120px] h-14 text-base font-bold shadow-md bg-emerald-600 hover:bg-emerald-700 text-white border-0 gap-2"
+             >
+                <Package size={20} />
+                庫存管理
+             </Button>
+        )}
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[700px] h-[80vh] flex flex-col p-0 gap-0 overflow-hidden">
+        <div className="p-6 pb-2 border-b border-border bg-muted/20">
+            <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-xl">
+                    <Package className="text-indigo-600" />
+                    <span>庫存管理中心</span>
+                </DialogTitle>
+                <div className="flex gap-2 mt-4">
+                     <TabButton active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} icon={<Archive size={16} />} label="庫存總覽" />
+                     <TabButton active={activeTab === 'restock'} onClick={() => setActiveTab('restock')} icon={<PlusCircle size={16} />} label="入庫登記" />
+                     <TabButton active={activeTab === 'history'} onClick={() => setActiveTab('history')} icon={<History size={16} />} label="歷史紀錄" />
+                </div>
+            </DialogHeader>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6 bg-background">
+            {activeTab === 'overview' && (
+                <div className="space-y-4">
+                    {loading ? (
+                        <div className="flex justify-center p-8"><Loader2 className="animate-spin text-muted-foreground" /></div>
+                    ) : (
+                        <div className="rounded-md border border-border">
+                            <table className="w-full text-sm">
+                                <thead className="bg-muted text-muted-foreground">
+                                    <tr>
+                                        <th className="p-3 text-left font-medium">品牌/型號</th>
+                                        <th className="p-3 text-right font-medium">目前庫存</th>
+                                        <th className="p-3 text-right font-medium">累積進貨</th>
+                                        <th className="p-3 text-right font-medium">累積領取</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {inventory.map((item) => (
+                                        <tr key={item.shuttlecock_type_id} className="border-t border-border hover:bg-muted/20 transition-colors">
+                                            <td className="p-3">
+                                                <div className="font-bold text-foreground">{item.brand}</div>
+                                                <div className="text-xs text-muted-foreground">{item.name}</div>
+                                            </td>
+                                            <td className="p-3 text-right">
+                                                <span className={`font-bold text-lg ${item.current_stock < 5 ? 'text-red-500' : 'text-emerald-600'}`}>
+                                                    {item.current_stock}
+                                                </span>
+                                                <span className="text-xs text-muted-foreground ml-1">桶</span>
+                                            </td>
+                                            <td className="p-3 text-right text-muted-foreground">{item.total_restocked}</td>
+                                            <td className="p-3 text-right text-muted-foreground">{item.total_picked}</td>
+                                        </tr>
+                                    ))}
+                                    {inventory.length === 0 && (
+                                        <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">尚無庫存資料</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {activeTab === 'restock' && (
+                <div className="max-w-md mx-auto py-4">
+                    {step === 1 ? (
+                         <form onSubmit={handleVerifyPassword} className="space-y-6">
+                            <div className="text-center space-y-2">
+                                <div className="mx-auto w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center text-indigo-600">
+                                    <Lock size={24} />
+                                </div>
+                                <h3 className="text-lg font-bold">身分驗證</h3>
+                                <p className="text-sm text-muted-foreground">請輸入庫存管理密碼以進行入庫作業</p>
+                            </div>
+                            <div className="space-y-2">
+                                <Input 
+                                    type="password" 
+                                    value={restockPassword} 
+                                    onChange={e => setRestockPassword(e.target.value)} 
+                                    placeholder="輸入密碼 (預設 1111)" 
+                                    className="text-center text-lg tracking-widest h-12"
+                                    autoFocus
+                                />
+                                {error && <p className="text-sm text-red-500 text-center">{error}</p>}
+                            </div>
+                            <Button type="submit" className="w-full h-12 text-lg" disabled={formLoading}>
+                                {formLoading ? <Loader2 className="animate-spin" /> : "驗證"}
+                            </Button>
+                         </form>
+                    ) : step === 2 ? (
+                        <div className="space-y-4">
+                             <div className="flex items-center gap-2 text-emerald-600 font-bold border-b pb-2">
+                                <CheckCircle2 size={18} /> 驗證通過
+                             </div>
+                             <div className="space-y-3">
+                                 <div className="space-y-1">
+                                     <Label>球種</Label>
+                                     <select 
+                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-ring"
+                                        value={selectedTypeId}
+                                        onChange={e => setSelectedTypeId(e.target.value)}
+                                     >
+                                         {types.map(t => <option key={t.id} value={t.id}>{t.brand} {t.name}</option>)}
+                                     </select>
+                                     <ShuttlecockTypeManager onTypeAdded={fetchTypes} />
+                                 </div>
+                                 <div className="grid grid-cols-2 gap-4">
+                                     <div className="space-y-1">
+                                         <Label>數量 (桶)</Label>
+                                         <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="h-10" />
+                                     </div>
+                                     <div className="space-y-1">
+                                         <Label>單價 ($)</Label>
+                                         <Input type="number" value={unitPrice} onChange={e => setUnitPrice(e.target.value)} placeholder="0" className="h-10" />
+                                     </div>
+                                 </div>
+                                 {error && <p className="text-sm text-red-500">{error}</p>}
+                                 <Button onClick={() => setStep(3)} className="w-full mt-2" disabled={!selectedTypeId || parseInt(amount) < 1}>
+                                    下一步：確認
+                                 </Button>
+                             </div>
+                        </div>
+                    ) : (
+                        <div className="space-y-6 text-center">
+                            <h3 className="text-lg font-bold flex items-center justify-center gap-2 text-orange-600">
+                                <PackagePlus /> 二次確認
+                            </h3>
+                            <div className="bg-muted/50 p-6 rounded-xl space-y-4 border border-border">
+                                <div>
+                                    <p className="text-xs text-muted-foreground uppercase">入庫項目</p>
+                                    <p className="text-xl font-bold">{types.find(t=>t.id===selectedTypeId)?.brand} {types.find(t=>t.id===selectedTypeId)?.name}</p>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4 text-left">
+                                    <div className="bg-background p-3 rounded border">
+                                        <p className="text-xs text-muted-foreground">數量</p>
+                                        <p className="text-lg font-bold">{amount} 桶</p>
+                                    </div>
+                                    <div className="bg-background p-3 rounded border">
+                                        <p className="text-xs text-muted-foreground">單價</p>
+                                        <p className="text-lg font-bold">${unitPrice || 0}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <Button variant="outline" onClick={() => setStep(2)}>返回修改</Button>
+                                <Button onClick={handleRestockSubmit} disabled={formLoading} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                                    {formLoading ? <Loader2 className="animate-spin" /> : "確認入庫"}
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {activeTab === 'history' && (
+                <div className="space-y-4">
+                      {loading ? (
+                        <div className="flex justify-center p-8"><Loader2 className="animate-spin text-muted-foreground" /></div>
+                    ) : (
+                        <div className="rounded-md border border-border">
+                            <table className="w-full text-sm">
+                                <thead className="bg-muted text-muted-foreground">
+                                    <tr>
+                                        <th className="p-3 text-left font-medium">日期</th>
+                                        <th className="p-3 text-left font-medium">球種</th>
+                                        <th className="p-3 text-right font-medium">數量</th>
+                                        <th className="p-3 text-right font-medium">單價</th>
+                                        <th className="p-3 text-right font-medium">總額</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {history.map((record) => (
+                                        <tr key={record.id} className="border-t border-border hover:bg-muted/20 transition-colors">
+                                            <td className="p-3 text-muted-foreground whitespace-nowrap">
+                                                {new Date(record.date).toLocaleDateString()}
+                                                <div className="text-xs opacity-50">{new Date(record.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                                            </td>
+                                            <td className="p-3">
+                                                <div className="font-semibold">{record.brand}</div>
+                                                <div className="text-xs text-muted-foreground">{record.name}</div>
+                                            </td>
+                                            <td className="p-3 text-right font-bold text-emerald-600">+{record.quantity}</td>
+                                            <td className="p-3 text-right">${record.unit_price}</td>
+                                            <td className="p-3 text-right font-medium">${record.total_price}</td>
+                                        </tr>
+                                    ))}
+                                    {history.length === 0 && (
+                                        <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">尚無紀錄</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function TabButton({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string }) {
+    return (
+        <button 
+            onClick={onClick}
+            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all ${active ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300' : 'text-muted-foreground hover:bg-muted'}`}
+        >
+            {icon}
+            {label}
+        </button>
+    )
+}
