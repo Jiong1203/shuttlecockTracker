@@ -25,11 +25,19 @@ interface RestockBatch {
     created_at: string;
 }
 
-interface Pickup {
+interface RestockRecord {
     id: string;
-    quantity: number;
-    created_at: string;
     shuttlecock_type_id: string;
+    quantity: number;
+    unit_price: number;
+    created_at: string;
+}
+
+interface PickupRecord {
+    shuttlecock_type_id: string;
+    quantity: number;
+    picker_name: string;
+    created_at: string;
 }
 
 export async function POST(request: Request) {
@@ -62,20 +70,26 @@ export async function POST(request: Request) {
     if (pickupError) throw pickupError;
 
     // 將資料依球種分組
-    const typeIds = Array.from(new Set(restocks.map((r: any) => r.shuttlecock_type_id)));
+    const typeIds = Array.from(new Set((restocks as RestockRecord[]).map(r => r.shuttlecock_type_id)));
     
     // 結果物件
-    const result_details: any[] = [];
+    const result_details: {
+        type_id: string;
+        total_quantity: number;
+        total_cost: number;
+        average_cost: number;
+        used_batches: { price: number, quantity: number }[];
+    }[] = [];
     let grand_total_cost = 0;
 
     for (const typeId of typeIds) {
         // 篩選該球種的資料
-        const typeRestocks = restocks.filter((r: any) => r.shuttlecock_type_id === typeId).map((r: any) => ({
+        const typeRestocks = (restocks as RestockRecord[]).filter(r => r.shuttlecock_type_id === typeId).map(r => ({
             ...r,
             remaining: r.quantity
         }));
         
-        const typePickups = allPickups.filter((p: any) => p.shuttlecock_type_id === typeId);
+        const typePickups = (allPickups as PickupRecord[]).filter(p => p.shuttlecock_type_id === typeId);
 
         let typeTotalCost = 0;
         let typeUsageCount = 0;

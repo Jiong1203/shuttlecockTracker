@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { InventoryDisplay } from "@/components/inventory-display"
 import { PickupForm } from "@/components/pickup-form"
 import { SettlementDialog } from "@/components/settlement-dialog"
@@ -17,10 +17,27 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { WelcomeGuide } from "@/components/welcome-guide"
 import { ToastContainer } from "@/components/ui/toast"
 
+interface InventorySummary {
+  shuttlecock_type_id: string;
+  brand: string;
+  name: string;
+  is_active: boolean;
+  total_restocked: number;
+  total_picked: number;
+  current_stock: number;
+}
+
+interface PickupRecord {
+    id: string
+    picker_name: string
+    quantity: number
+    created_at: string
+}
+
 export default function Home() {
   const [inventoryManagerOpen, setInventoryManagerOpen] = useState(false)
-  const [inventory, setInventory] = useState<any[] | null>(null)
-  const [records, setRecords] = useState([])
+  const [inventory, setInventory] = useState<InventorySummary[] | null>(null)
+  const [records, setRecords] = useState<PickupRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [group, setGroup] = useState<{ name: string } | null>(null)
   

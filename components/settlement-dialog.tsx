@@ -30,8 +30,12 @@ interface SettlementResult {
     details: TypeDetail[]
 }
 
+interface PickupRecord {
+    picker_name: string
+}
+
 interface SettlementDialogProps {
-  records?: any[] 
+  records?: PickupRecord[] 
 }
 
 export function SettlementDialog({ records }: SettlementDialogProps) {
@@ -42,7 +46,7 @@ export function SettlementDialog({ records }: SettlementDialogProps) {
   const [result, setResult] = useState<SettlementResult | null>(null)
 
   const uniquePickers = useMemo(() => {
-    return Array.from(new Set(records?.map((r: any) => r.picker_name).filter(Boolean) as string[]))
+    return Array.from(new Set(records?.map(r => r.picker_name).filter(Boolean)))
   }, [records])
 
   const handleCalculate = async () => {
@@ -143,7 +147,7 @@ export function SettlementDialog({ records }: SettlementDialogProps) {
 
                   <div className="space-y-3">
                       <h4 className="font-bold text-sm text-muted-foreground uppercase tracking-wider">球種消耗明細</h4>
-                      {result.details.map((detail: any) => (
+                      {result.details.map((detail) => (
                           <div key={detail.type_id} className="bg-card border border-border p-4 rounded-xl shadow-sm">
                               <div className="flex justify-between items-center mb-2">
                                   <span className="font-bold">消耗量: {detail.total_quantity} 桶</span>
@@ -152,7 +156,7 @@ export function SettlementDialog({ records }: SettlementDialogProps) {
                                <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
                                    <p className="mb-1">使用批次:</p>
                                    <ul className="list-disc pl-4 space-y-1">
-                                       {detail.used_batches.map((batch: any, idx: number) => (
+                                       {detail.used_batches.map((batch, idx) => (
                                            <li key={idx}>使用 {batch.quantity} 桶 (進價 ${batch.price})</li>
                                        ))}
                                    </ul>
