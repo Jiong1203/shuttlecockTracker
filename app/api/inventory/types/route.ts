@@ -17,8 +17,10 @@ async function getGroupId(supabase: SupabaseClient) {
   return profile?.group_id
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const supabase = await createClient()
+  const { searchParams } = new URL(request.url)
+  const showAll = searchParams.get('all') === 'true'
 
   try {
     const groupId = await getGroupId(supabase)
@@ -26,18 +28,24 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data, error } = await supabase
-      .from('pickup_records')
+    let query = supabase
+      .from('shuttlecock_types')
       .select('*')
       .eq('group_id', groupId)
-      .order('created_at', { ascending: false })
+    
+    if (!showAll) {
+      query = query.eq('is_active', true)
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false })
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
     return NextResponse.json(data)
-  } catch {
+  } catch (err) {
+      console.error("Error fetching types:", err)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }
@@ -50,36 +58,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { picker_name, quantity, type_id } = await request.json()
+    const { brand, name } = await request.json()
 
-    if (!picker_name || !quantity) {
-      return NextResponse.json({ error: 'Missing name or quantity' }, { status: 400 })
-    }
-    
-    if (!type_id) {
-       return NextResponse.json({ error: 'Missing type_id' }, { status: 400 })
-    }
-
-    // Check current stock
-    const { data: stockData } = await supabase
-      .from('inventory_summary')
-      .select('current_stock')
-      .eq('group_id', groupId)
-      .eq('shuttlecock_type_id', type_id)
-      .single()
-
-    const currentStock = stockData?.current_stock || 0
-    if (quantity > currentStock) {
-        return NextResponse.json({ error: `庫存不足，目前僅剩 ${currentStock} 桶` }, { status: 400 })
+    if (!brand || !name) {
+      return NextResponse.json({ error: 'Missing brand or name' }, { status: 400 })
     }
 
     const { data, error } = await supabase
-      .from('pickup_records')
+      .from('shuttlecock_types')
       .insert([{ 
-        picker_name, 
-        quantity, 
         group_id: groupId, 
-        shuttlecock_type_id: type_id 
+        brand, 
+        name,
+        created_by: (await supabase.auth.getUser()).data.user?.id
       }])
       .select()
       .single()
@@ -89,12 +80,13 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(data)
-  } catch {
+  } catch (err) {
+    console.error("Error creating type:", err)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }
 
-export async function DELETE(request: Request) {
+export async function PATCH(request: Request) {
   const supabase = await createClient()
   try {
     const groupId = await getGroupId(supabase)
@@ -102,25 +94,27 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { searchParams } = new URL(request.url)
-    const id = searchParams.get('id')
+    const { id, is_active } = await request.json()
 
     if (!id) {
-      return NextResponse.json({ error: 'Missing record ID' }, { status: 400 })
+      return NextResponse.json({ error: 'Missing type ID' }, { status: 400 })
     }
 
-    const { error } = await supabase
-      .from('pickup_records')
-      .delete()
+    const { data, error } = await supabase
+      .from('shuttlecock_types')
+      .update({ is_active })
       .eq('id', id)
       .eq('group_id', groupId)
+      .select()
+      .single()
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ message: 'Record deleted successfully' })
-  } catch {
+    return NextResponse.json(data)
+  } catch (err) {
+    console.error("Error updating type:", err)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }

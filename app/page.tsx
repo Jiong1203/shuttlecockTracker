@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { InventoryDisplay } from "@/components/inventory-display"
 import { PickupForm } from "@/components/pickup-form"
 import { SettlementDialog } from "@/components/settlement-dialog"
-import { RestockForm, RestockFormRef } from "@/components/restock-form"
+import { InventoryManagerDialog } from "@/components/inventory-manager-dialog"
 import { PickupHistory } from "@/components/pickup-history"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
@@ -18,12 +18,8 @@ import { WelcomeGuide } from "@/components/welcome-guide"
 import { ToastContainer } from "@/components/ui/toast"
 
 export default function Home() {
-  const restockFormRef = useRef<RestockFormRef>(null)
-  const [inventory, setInventory] = useState<{
-    initial_stock: number;
-    total_picked: number;
-    current_stock: number;
-  } | null>(null)
+  const [inventoryManagerOpen, setInventoryManagerOpen] = useState(false)
+  const [inventory, setInventory] = useState<any[] | null>(null)
   const [records, setRecords] = useState([])
   const [loading, setLoading] = useState(true)
   const [group, setGroup] = useState<{ name: string } | null>(null)
@@ -34,8 +30,8 @@ export default function Home() {
   const fetchData = useCallback(async () => {
     try {
       const [invRes, pickRes] = await Promise.all([
-        fetch('/api/inventory'),
-        fetch('/api/pickup')
+        fetch('/api/inventory', { cache: 'no-store' }),
+        fetch('/api/pickup', { cache: 'no-store' })
       ])
       
       if (!invRes.ok) {
@@ -51,7 +47,7 @@ export default function Home() {
       const invData = await invRes.json()
       const pickData = await pickRes.json()
       
-      setInventory(invData)
+      setInventory(Array.isArray(invData) ? invData : [invData]) 
       setRecords(pickData)
     } catch (error) {
       console.error("Fetch data error:", error)
@@ -73,7 +69,6 @@ export default function Home() {
       if (profile && profile.groups) {
         setGroup(profile.groups)
       } else {
-        // 資料讀取中或發生異常時的處理
         setGroup(null)
       }
     } else {
@@ -90,6 +85,13 @@ export default function Home() {
     await supabase.auth.signOut()
     router.push('/login')
   }
+
+  const getTotalCurrentStock = () => {
+      if (!inventory) return 0;
+      return inventory.reduce((acc, item) => acc + (item.current_stock || 0), 0);
+  }
+
+  const totalCurrentStock = getTotalCurrentStock();
 
   if (loading) {
     return (
@@ -155,25 +157,25 @@ export default function Home() {
 
         {inventory && (
           <>
-            <InventoryDisplay 
-              initialStock={inventory.initial_stock}
-              totalPicked={inventory.total_picked}
-              currentStock={inventory.current_stock}
-            />
+            <InventoryDisplay stocks={inventory} />
             
-            {inventory.current_stock === 0 && (
+            {totalCurrentStock === 0 && (
               <WelcomeGuide 
-                currentStock={inventory.current_stock} 
-                onStartSetup={() => restockFormRef.current?.open()}
+                currentStock={0} 
+                onStartSetup={() => setInventoryManagerOpen(true)}
               />
             )}
           </>
         )}
 
         <div className="flex flex-row justify-center items-center gap-3 w-full max-w-2xl mx-auto">
-           <PickupForm onSuccess={fetchData} disabled={inventory?.current_stock === 0} />
+           <PickupForm onSuccess={fetchData} disabled={totalCurrentStock === 0} />
            <SettlementDialog records={records} />
-           <RestockForm ref={restockFormRef} onSuccess={fetchData} shouldHighlight={inventory?.current_stock === 0} />
+           <InventoryManagerDialog 
+              open={inventoryManagerOpen} 
+              onOpenChange={setInventoryManagerOpen}
+              onUpdate={fetchData} 
+           />
         </div>
         <div className="w-full max-w-2xl mx-auto">
            <PickupHistory records={records} onDelete={fetchData} />

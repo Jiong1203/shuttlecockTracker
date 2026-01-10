@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { PackagePlus, Lock, Loader2, CheckCircle2 } from "lucide-react"
+import { ShuttlecockTypeManager } from "./shuttlecock-type-manager"
 
 interface RestockFormProps {
   onSuccess: () => void
@@ -23,23 +24,53 @@ export interface RestockFormRef {
   open: () => void
 }
 
+interface ShuttlecockType {
+  id: string
+  brand: string
+  name: string
+  is_active: boolean
+}
+
 export const RestockForm = forwardRef<RestockFormRef, RestockFormProps>(function RestockForm({ onSuccess, shouldHighlight = false }, ref) {
   const [open, setOpen] = useState(false)
-  const [step, setStep] = useState<1 | 2 | 3>(1) // 1: 密碼, 2: 數量, 3: 二次確認
+  const [step, setStep] = useState<1 | 2 | 3>(1) // 1: 密碼, 2: 數量/球種/價格, 3: 二次確認
   const [loading, setLoading] = useState(false)
   const [hasRestockPassword, setHasRestockPassword] = useState(false)
   
   const [password, setPassword] = useState("")
   const [amount, setAmount] = useState("10")
+  const [unitPrice, setUnitPrice] = useState("")
+  const [types, setTypes] = useState<ShuttlecockType[]>([])
+  const [selectedTypeId, setSelectedTypeId] = useState<string>("")
   const [error, setError] = useState<string | null>(null)
+  const [lastVerifiedAt, setLastVerifiedAt] = useState<number | null>(null)
+
+  const VERIFICATION_TIMEOUT = 5 * 60 * 1000 // 5 minutes
 
   // Expose open method to parent via ref
   useImperativeHandle(ref, () => ({
     open: () => {
       setOpen(true)
       checkSecurity()
+      fetchTypes()
     }
   }))
+
+  const fetchTypes = async () => {
+    try {
+      const res = await fetch('/api/inventory/types')
+      const data = await res.json()
+      if (Array.isArray(data)) {
+        setTypes(data)
+        // Default to the first one if available and not set
+        if (data.length > 0 && !selectedTypeId) {
+            setSelectedTypeId(data[0].id)
+        }
+      }
+    } catch (e) {
+      console.error("Failed to fetch types", e)
+    }
+  }
 
   // 檢查是否需要密碼（目前恆定需要，至少是 1111）
   const checkSecurity = async () => {
@@ -47,8 +78,13 @@ export const RestockForm = forwardRef<RestockFormRef, RestockFormProps>(function
       const res = await fetch('/api/group')
       const data = await res.json()
       setHasRestockPassword(data.hasRestockPassword)
-      // 無論是否有自訂密碼，都保持在第 1 步 (驗證步)
-      setStep(1)
+      
+      if (lastVerifiedAt && (Date.now() - lastVerifiedAt < VERIFICATION_TIMEOUT)) {
+          setStep(2)
+      } else {
+          setStep(1)
+          setLastVerifiedAt(null)
+      }
     } catch (error) {
       console.error("Failed to fetch security settings:", error)
       setStep(1)
@@ -78,6 +114,9 @@ export const RestockForm = forwardRef<RestockFormRef, RestockFormProps>(function
       }
 
       setStep(2)
+      setLastVerifiedAt(Date.now())
+      // fetch types if not yet
+      if (types.length === 0) fetchTypes()
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "驗證失敗，請重新輸入"
       setError(message)
@@ -93,6 +132,11 @@ export const RestockForm = forwardRef<RestockFormRef, RestockFormProps>(function
       setError("數量至少為 1 桶")
       return
     }
+    if (!selectedTypeId) {
+        setError("請選擇球種")
+        return
+    }
+    // Price checks? Allow 0? Assume yes.
     setStep(3)
     setError(null)
   }
@@ -108,6 +152,8 @@ export const RestockForm = forwardRef<RestockFormRef, RestockFormProps>(function
         body: JSON.stringify({
           password,
           amount: parseInt(amount, 10),
+          type_id: selectedTypeId,
+          unit_price: unitPrice ? parseInt(unitPrice, 10) : 0
         }),
       })
 
@@ -117,6 +163,7 @@ export const RestockForm = forwardRef<RestockFormRef, RestockFormProps>(function
         setOpen(false)
         resetState()
         onSuccess()
+        setLastVerifiedAt(Date.now())
       } else {
         setError(data.error || "入庫失敗")
         // 如果是密碼錯誤，跳回第一步
@@ -138,8 +185,12 @@ export const RestockForm = forwardRef<RestockFormRef, RestockFormProps>(function
 
   const resetState = () => {
     setStep(1)
-    setPassword("")
+    // Only clear password if not verified
+    if (step === 1) {
+        setPassword("")
+    }
     setAmount("10")
+    setUnitPrice("")
     setError(null)
   }
 
@@ -148,6 +199,7 @@ export const RestockForm = forwardRef<RestockFormRef, RestockFormProps>(function
       setOpen(val)
       if (val) {
         checkSecurity()
+        fetchTypes()
       } else {
         resetState()
       }
@@ -196,35 +248,70 @@ export const RestockForm = forwardRef<RestockFormRef, RestockFormProps>(function
             </DialogFooter>
           </form>
         ) : step === 2 ? (
-          <form onSubmit={handleGoToConfirm}>
+          <div className="space-y-4">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-emerald-600">
                 <CheckCircle2 size={20} />
-                驗證成功：輸入入庫量
+                驗證成功：輸入明細
               </DialogTitle>
             </DialogHeader>
-            <div className="grid gap-4 py-6">
-              <div className="grid gap-2">
-                <Label htmlFor="amount">本次進貨數量 (桶)</Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  min="1"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  required
-                  autoFocus
-                  className="h-12 text-xl font-bold"
-                />
-                {error && <p className="text-sm text-red-500 mt-1">{error}</p>}
+            
+            <form onSubmit={handleGoToConfirm} className="grid gap-4 py-2">
+                <div className="grid gap-2">
+                    <Label htmlFor="type">選擇球種</Label>
+                    <select 
+                        id="type"
+                        className="flex h-12 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        value={selectedTypeId}
+                        onChange={(e) => setSelectedTypeId(e.target.value)}
+                        required
+                    >
+                        {types.map(t => (
+                            <option key={t.id} value={t.id}>{t.brand} {t.name}</option>
+                        ))}
+                    </select>
+                    {/* Simplified integration without importing the component to avoid import path issues if not careful, 
+                        but effectively we should use the component. The user instruction said 'Embed ShuttlecockTypeManager'. 
+                        I will assume I need to import it. */}
+                     <ShuttlecockTypeManager onTypeAdded={fetchTypes} />
+                </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="amount">進貨數量 (桶)</Label>
+                    <Input
+                      id="amount"
+                      type="number"
+                      min="1"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      required
+                      className="h-12 text-lg font-bold"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="price">購入單價/桶</Label>
+                    <Input
+                      id="price"
+                      type="number"
+                      min="0"
+                      value={unitPrice}
+                      onChange={(e) => setUnitPrice(e.target.value)}
+                      placeholder="0"
+                      className="h-12 text-lg font-bold"
+                    />
+                  </div>
               </div>
-            </div>
-            <DialogFooter>
-              <Button type="submit" className="w-full h-12 text-lg font-bold bg-emerald-600 hover:bg-emerald-700">
-                下一步：確認明細
-              </Button>
-            </DialogFooter>
-          </form>
+              
+              {error && <p className="text-sm text-red-500 mt-1">{error}</p>}
+              
+              <DialogFooter className="mt-4">
+                <Button type="submit" className="w-full h-12 text-lg font-bold bg-emerald-600 hover:bg-emerald-700">
+                  下一步：確認明細
+                </Button>
+              </DialogFooter>
+            </form>
+          </div>
         ) : (
           <div>
             <DialogHeader>
@@ -233,9 +320,22 @@ export const RestockForm = forwardRef<RestockFormRef, RestockFormProps>(function
                 入庫二次確認
               </DialogTitle>
             </DialogHeader>
-            <div className="py-8 text-center bg-muted/50 rounded-xl my-4 border border-border">
-               <p className="text-muted-foreground mb-1">本次準備入庫數量</p>
-               <p className="text-5xl font-black text-foreground">{amount} <span className="text-xl font-normal">桶</span></p>
+            <div className="py-6 text-center bg-muted/50 rounded-xl my-4 border border-border">
+               <div className="mb-4">
+                 <p className="text-muted-foreground text-sm">球種</p>
+                 <p className="text-lg font-bold">{types.find(t => t.id === selectedTypeId)?.brand} {types.find(t => t.id === selectedTypeId)?.name}</p>
+               </div>
+               <div className="grid grid-cols-2 gap-4 border-t border-border/50 pt-4">
+                   <div>
+                        <p className="text-muted-foreground text-xs">數量</p>
+                        <p className="text-2xl font-black text-foreground">{amount} <span className="text-sm font-normal">桶</span></p>
+                   </div>
+                   <div>
+                        <p className="text-muted-foreground text-xs">單價</p>
+                        <p className="text-2xl font-black text-foreground">${unitPrice || 0}</p>
+                   </div>
+               </div>
+               
                {error && <p className="text-sm text-red-500 mt-4">{error}</p>}
             </div>
             <div className="grid grid-cols-2 gap-3 mt-4">

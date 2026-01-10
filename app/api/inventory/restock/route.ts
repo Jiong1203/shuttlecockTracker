@@ -25,10 +25,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { amount, password } = await request.json()
+    const { amount, password, type_id, unit_price } = await request.json()
 
     if (!amount || amount < 1) {
       return NextResponse.json({ error: '進貨數量必須至少為 1 桶' }, { status: 400 })
+    }
+    
+    if (!type_id) {
+       return NextResponse.json({ error: '必須選擇球種' }, { status: 400 })
     }
 
     // 檢查是否有設定入庫密碼
@@ -46,43 +50,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '入庫管理密碼錯誤' }, { status: 401 })
     }
 
-    // 獲取該團體現有的庫存配置
-    const { data: configList, error: fetchError } = await supabase
-      .from('inventory_config')
-      .select('*')
-      .eq('group_id', groupId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-
-    if (fetchError) {
-      return NextResponse.json({ error: fetchError.message }, { status: 500 })
-    }
-
-    let newStock = 0
-    if (!configList || configList.length === 0) {
-      // 如果還沒有配置，建立一個
-      newStock = parseInt(amount, 10)
-      const { error: insertError } = await supabase
-        .from('inventory_config')
-        .insert({ group_id: groupId, initial_quantity: newStock })
-      
-      if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })
-    } else {
-      // 獲取最新的一筆並更新
-      const currentConfig = configList[0]
-      newStock = currentConfig.initial_quantity + parseInt(amount, 10)
-
-      const { error: updateError } = await supabase
-        .from('inventory_config')
-        .update({ initial_quantity: newStock })
-        .eq('id', currentConfig.id)
-
-      if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
+    // 新增入庫紀錄
+    const { error: insertError } = await supabase
+      .from('restock_records')
+      .insert({ 
+        group_id: groupId, 
+        shuttlecock_type_id: type_id,
+        quantity: parseInt(amount, 10),
+        unit_price: unit_price ? parseInt(unit_price, 10) : 0,
+        created_by: (await supabase.auth.getUser()).data.user?.id
+      })
+    
+    if (insertError) {
+      return NextResponse.json({ error: insertError.message }, { status: 500 })
     }
 
     return NextResponse.json({ 
-      message: '進貨成功', 
-      new_initial_stock: newStock 
+      message: '進貨成功'
     })
   } catch (error) {
     console.error("Restock error:", error)

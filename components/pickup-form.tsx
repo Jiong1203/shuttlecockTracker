@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { PlusCircle, Loader2 } from "lucide-react"
+import { PlusCircle, Loader2, AlertCircle } from "lucide-react"
 import { showToast } from "@/components/ui/toast"
 
 interface PickupFormProps {
@@ -20,14 +20,48 @@ interface PickupFormProps {
   disabled?: boolean
 }
 
+interface ShuttlecockType {
+  id: string
+  brand: string
+  name: string
+  is_active: boolean
+  group_id: string
+  created_at?: string
+  created_by?: string
+}
+
 export function PickupForm({ onSuccess, disabled = false }: PickupFormProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [name, setName] = useState("")
   const [quantity, setQuantity] = useState("1")
+  const [types, setTypes] = useState<ShuttlecockType[]>([])
+  const [selectedTypeId, setSelectedTypeId] = useState<string>("")
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchTypes = async () => {
+    try {
+      const res = await fetch('/api/inventory/types')
+      const data = await res.json()
+      if (Array.isArray(data)) {
+        setTypes(data)
+        if (data.length > 0 && !selectedTypeId) {
+            setSelectedTypeId(data[0].id)
+        }
+      }
+    } catch (e) {
+      console.error("Failed to fetch types", e)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError(null)
+
+    if (!selectedTypeId) {
+        setError("請選擇球種")
+        return
+    }
     setLoading(true)
 
     try {
@@ -37,20 +71,24 @@ export function PickupForm({ onSuccess, disabled = false }: PickupFormProps) {
         body: JSON.stringify({
           picker_name: name,
           quantity: parseInt(quantity, 10),
+          type_id: selectedTypeId
         }),
       })
+
+      const data = await response.json()
 
       if (response.ok) {
         setName("")
         setQuantity("1")
         setOpen(false)
         onSuccess()
+        showToast("登記成功", 'success')
       } else {
-        alert("登記失敗，請檢查資料")
+        setError(data.error || "登記失敗，請檢查資料")
       }
     } catch (error) {
       console.error("Pickup error:", error)
-      alert("連線發生錯誤")
+      setError("連線發生錯誤")
     } finally {
       setLoading(false)
     }
@@ -69,6 +107,9 @@ export function PickupForm({ onSuccess, disabled = false }: PickupFormProps) {
         return
       }
       setOpen(newOpen)
+      if (newOpen) {
+          fetchTypes()
+      }
     }}>
       <DialogTrigger asChild>
         <div className="flex-1 min-w-[120px]">
@@ -96,6 +137,20 @@ export function PickupForm({ onSuccess, disabled = false }: PickupFormProps) {
           </DialogHeader>
           <div className="grid gap-4 py-6">
             <div className="grid gap-2">
+                <Label htmlFor="type" className="text-foreground font-bold">球種</Label>
+                <select 
+                    id="type"
+                    className="flex h-12 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    value={selectedTypeId}
+                    onChange={(e) => setSelectedTypeId(e.target.value)}
+                    required
+                >
+                    {types.map(t => (
+                        <option key={t.id} value={t.id}>{t.brand} {t.name}</option>
+                    ))}
+                </select>
+            </div>
+            <div className="grid gap-2">
               <Label htmlFor="name" className="text-foreground font-bold">領取人姓名</Label>
               <Input
                 id="name"
@@ -119,6 +174,14 @@ export function PickupForm({ onSuccess, disabled = false }: PickupFormProps) {
               />
             </div>
           </div>
+          
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-md flex items-center gap-2 text-red-600 dark:text-red-400">
+               <AlertCircle size={18} />
+               <p className="text-sm font-bold">{error}</p>
+            </div>
+          )}
+
           <DialogFooter>
             <Button type="submit" className="w-full h-12 text-lg font-bold" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
