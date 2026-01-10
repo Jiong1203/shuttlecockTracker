@@ -280,3 +280,38 @@ CREATE POLICY "Group members can create restock" ON public.restock_records
 
 -- 7. 讓 view 安全性設為 invoker
 ALTER VIEW public.inventory_summary SET (security_invoker = on);
+
+-- ==========================================
+-- 資料庫遷移腳本：庫存顯示自訂化 (第三階段)
+-- ==========================================
+
+-- 1. 更新檢視表 inventory_summary 以包含 is_active 欄位
+DROP VIEW IF EXISTS public.inventory_summary;
+
+CREATE VIEW public.inventory_summary AS
+WITH restock_stats AS (
+    SELECT shuttlecock_type_id, SUM(quantity) as total_qty
+    FROM public.restock_records
+    GROUP BY shuttlecock_type_id
+),
+pickup_stats AS (
+    SELECT shuttlecock_type_id, SUM(quantity) as total_qty
+    FROM public.pickup_records
+    GROUP BY shuttlecock_type_id
+)
+SELECT 
+    g.id as group_id,
+    st.id as shuttlecock_type_id,
+    st.brand,
+    st.name,
+    st.is_active,
+    COALESCE(rs.total_qty, 0) as total_restocked,
+    COALESCE(ps.total_qty, 0) as total_picked,
+    COALESCE(rs.total_qty, 0) - COALESCE(ps.total_qty, 0) as current_stock
+FROM public.groups g
+JOIN public.shuttlecock_types st ON g.id = st.group_id
+LEFT JOIN restock_stats rs ON st.id = rs.shuttlecock_type_id
+LEFT JOIN pickup_stats ps ON st.id = ps.shuttlecock_type_id;
+
+-- 2. 確保 view 安全性設為 invoker
+ALTER VIEW public.inventory_summary SET (security_invoker = on);

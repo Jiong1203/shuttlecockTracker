@@ -61,7 +61,8 @@ export function PickupHistory({ records, onDelete }: PickupHistoryProps) {
     <div className="w-full max-w-2xl mx-auto mt-8">
       <h2 className="text-xl font-bold mb-4 px-2 text-foreground">領取歷史紀錄</h2>
       <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
-        <Table>
+        <div className="max-h-[400px] overflow-y-auto overflow-x-hidden">
+          <Table>
           <TableHeader className="bg-muted/50">
             <TableRow>
               <TableHead className="font-bold">領取人</TableHead>
@@ -101,6 +102,7 @@ export function PickupHistory({ records, onDelete }: PickupHistoryProps) {
           </TableBody>
         </Table>
       </div>
+    </div>
 
       <Dialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
         <DialogContent className="sm:max-w-[425px]">

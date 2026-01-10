@@ -24,6 +24,13 @@ export interface RestockFormRef {
   open: () => void
 }
 
+interface ShuttlecockType {
+  id: string
+  brand: string
+  name: string
+  is_active: boolean
+}
+
 export const RestockForm = forwardRef<RestockFormRef, RestockFormProps>(function RestockForm({ onSuccess, shouldHighlight = false }, ref) {
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState<1 | 2 | 3>(1) // 1: 密碼, 2: 數量/球種/價格, 3: 二次確認
@@ -33,9 +40,12 @@ export const RestockForm = forwardRef<RestockFormRef, RestockFormProps>(function
   const [password, setPassword] = useState("")
   const [amount, setAmount] = useState("10")
   const [unitPrice, setUnitPrice] = useState("")
-  const [types, setTypes] = useState<any[]>([])
+  const [types, setTypes] = useState<ShuttlecockType[]>([])
   const [selectedTypeId, setSelectedTypeId] = useState<string>("")
   const [error, setError] = useState<string | null>(null)
+  const [lastVerifiedAt, setLastVerifiedAt] = useState<number | null>(null)
+
+  const VERIFICATION_TIMEOUT = 5 * 60 * 1000 // 5 minutes
 
   // Expose open method to parent via ref
   useImperativeHandle(ref, () => ({
@@ -68,8 +78,13 @@ export const RestockForm = forwardRef<RestockFormRef, RestockFormProps>(function
       const res = await fetch('/api/group')
       const data = await res.json()
       setHasRestockPassword(data.hasRestockPassword)
-      // 無論是否有自訂密碼，都保持在第 1 步 (驗證步)
-      setStep(1)
+      
+      if (lastVerifiedAt && (Date.now() - lastVerifiedAt < VERIFICATION_TIMEOUT)) {
+          setStep(2)
+      } else {
+          setStep(1)
+          setLastVerifiedAt(null)
+      }
     } catch (error) {
       console.error("Failed to fetch security settings:", error)
       setStep(1)
@@ -99,6 +114,7 @@ export const RestockForm = forwardRef<RestockFormRef, RestockFormProps>(function
       }
 
       setStep(2)
+      setLastVerifiedAt(Date.now())
       // fetch types if not yet
       if (types.length === 0) fetchTypes()
     } catch (err: unknown) {
@@ -147,6 +163,7 @@ export const RestockForm = forwardRef<RestockFormRef, RestockFormProps>(function
         setOpen(false)
         resetState()
         onSuccess()
+        setLastVerifiedAt(Date.now())
       } else {
         setError(data.error || "入庫失敗")
         // 如果是密碼錯誤，跳回第一步
@@ -168,11 +185,13 @@ export const RestockForm = forwardRef<RestockFormRef, RestockFormProps>(function
 
   const resetState = () => {
     setStep(1)
-    setPassword("")
+    // Only clear password if not verified
+    if (step === 1) {
+        setPassword("")
+    }
     setAmount("10")
     setUnitPrice("")
     setError(null)
-    // Don't reset selectedTypeId to avoid annoyance
   }
 
   return (

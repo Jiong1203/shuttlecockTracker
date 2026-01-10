@@ -52,7 +52,7 @@ export function InventoryDisplay({ stocks, currentStock }: InventoryDisplayProps
         return (
             <Card key={stock.shuttlecock_type_id} className="w-full md:w-[calc(50%-0.5rem)] overflow-hidden border-border bg-card shadow-sm transition-all hover:shadow-xl rounded-2xl">
             <CardHeader className="pt-6 pb-0">
-                <CardTitle className="text-center text-slate-400 dark:text-slate-500 font-bold text-sm tracking-widest uppercase">
+                <CardTitle className="text-center text-slate-400 dark:text-slate-500 font-bold text-base tracking-widest uppercase">
                     {stock.brand} {stock.name}
                 </CardTitle>
             </CardHeader>

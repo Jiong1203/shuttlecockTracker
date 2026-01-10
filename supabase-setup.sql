@@ -69,6 +69,7 @@ SELECT
     st.id as shuttlecock_type_id,
     st.brand,
     st.name,
+    st.is_active,
     COALESCE(rs.total_qty, 0) as total_restocked,
     COALESCE(ps.total_qty, 0) as total_picked,
     COALESCE(rs.total_qty, 0) - COALESCE(ps.total_qty, 0) as current_stock

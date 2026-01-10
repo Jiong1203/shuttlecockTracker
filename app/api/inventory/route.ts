@@ -32,6 +32,7 @@ export async function GET() {
       .from('inventory_summary')
       .select('*')
       .eq('group_id', profile.group_id)
+      .eq('is_active', true)
 
     if (error) {
       console.error('Error fetching inventory summary:', error)

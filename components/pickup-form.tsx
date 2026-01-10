@@ -20,12 +20,22 @@ interface PickupFormProps {
   disabled?: boolean
 }
 
+interface ShuttlecockType {
+  id: string
+  brand: string
+  name: string
+  is_active: boolean
+  group_id: string
+  created_at?: string
+  created_by?: string
+}
+
 export function PickupForm({ onSuccess, disabled = false }: PickupFormProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [name, setName] = useState("")
   const [quantity, setQuantity] = useState("1")
-  const [types, setTypes] = useState<any[]>([])
+  const [types, setTypes] = useState<ShuttlecockType[]>([])
   const [selectedTypeId, setSelectedTypeId] = useState<string>("")
   const [error, setError] = useState<string | null>(null)
 

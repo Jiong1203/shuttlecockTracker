@@ -8,7 +8,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogFooter
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -16,12 +15,12 @@ import {
   Package, 
   History, 
   PlusCircle, 
-  Search, 
   Archive, 
   Loader2, 
   CheckCircle2, 
   Lock,
-  PackagePlus
+  PackagePlus,
+  Settings2
 } from "lucide-react"
 import { ShuttlecockTypeManager } from "./shuttlecock-type-manager"
 
@@ -33,28 +32,59 @@ interface InventoryManagerDialogProps {
   onOpenChange?: (open: boolean) => void
 }
 
+interface InventoryItem {
+  shuttlecock_type_id: string
+  brand: string
+  name: string
+  current_stock: number
+  total_restocked: number
+  total_picked: number
+  is_active: boolean
+}
+
+interface HistoryRecord {
+  id: string
+  date: string
+  brand: string
+  name: string
+  quantity: number
+  unit_price: number
+  total_price: number
+  created_by_email: string
+}
+
+interface ShuttlecockType {
+  id: string
+  brand: string
+  name: string
+  is_active: boolean
+}
+
 export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen, onOpenChange }: InventoryManagerDialogProps) {
   const [internalOpen, setInternalOpen] = useState(false)
   const isOpen = controlledOpen ?? internalOpen
   const setIsOpen = onOpenChange ?? setInternalOpen
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'restock' | 'history'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'restock' | 'history' | 'types'>('overview')
   const [loading, setLoading] = useState(false)
   
   // Data States
-  const [inventory, setInventory] = useState<any[]>([])
-  const [history, setHistory] = useState<any[]>([])
+  const [inventory, setInventory] = useState<InventoryItem[]>([])
+  const [history, setHistory] = useState<HistoryRecord[]>([])
   
   // Restock Form States
   const [step, setStep] = useState<1 | 2 | 3>(1) 
   const [restockPassword, setRestockPassword] = useState("")
   const [hasRestockPassword, setHasRestockPassword] = useState(false)
-  const [types, setTypes] = useState<any[]>([])
+  const [types, setTypes] = useState<ShuttlecockType[]>([])
   const [selectedTypeId, setSelectedTypeId] = useState("")
   const [amount, setAmount] = useState("10")
   const [unitPrice, setUnitPrice] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [formLoading, setFormLoading] = useState(false)
+  const [lastVerifiedAt, setLastVerifiedAt] = useState<number | null>(null)
+
+  const VERIFICATION_TIMEOUT = 5 * 60 * 1000 // 5 minutes
 
   // Fetch Data Methods
   const fetchInventory = useCallback(async () => {
@@ -81,7 +111,7 @@ export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen
     }
   }, [])
 
-  const fetchTypes = async () => {
+  const fetchTypes = useCallback(async () => {
     try {
       const res = await fetch('/api/inventory/types')
       const data = await res.json()
@@ -90,16 +120,29 @@ export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen
         if (data.length > 0 && !selectedTypeId) setSelectedTypeId(data[0].id)
       }
     } catch (e) { console.error(e) }
-  }
+  }, [selectedTypeId])
 
-  const checkSecurity = async () => {
+  const checkSecurity = useCallback(async () => {
       try {
         const res = await fetch('/api/group')
         const data = await res.json()
         setHasRestockPassword(data.hasRestockPassword)
-        setStep(1)
+        
+        // Check if we have a valid recent verification
+        if (lastVerifiedAt && (Date.now() - lastVerifiedAt < VERIFICATION_TIMEOUT)) {
+            setStep(2)
+        } else {
+            setStep(1)
+            setLastVerifiedAt(null)
+        }
       } catch (e) { console.error(e) }
-  }
+  }, [lastVerifiedAt, VERIFICATION_TIMEOUT])
+
+  const handleTypeChange = useCallback(() => {
+    fetchTypes()
+    fetchInventory()
+    onUpdate?.()
+  }, [fetchTypes, fetchInventory, onUpdate])
 
   // Effect to load data when tab changes or dialog opens
   useEffect(() => {
@@ -111,7 +154,7 @@ export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen
          fetchTypes()
       }
     }
-  }, [isOpen, activeTab, fetchInventory, fetchHistory])
+  }, [isOpen, activeTab, fetchInventory, fetchHistory, checkSecurity, fetchTypes])
 
   // Restock logic
   const handleVerifyPassword = async (e: React.FormEvent) => {
@@ -126,9 +169,10 @@ export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen
       })
       if (!res.ok) throw new Error("密碼錯誤")
       setStep(2)
+      setLastVerifiedAt(Date.now())
       if (types.length === 0) fetchTypes()
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "密碼錯誤")
       setRestockPassword("")
     } finally {
       setFormLoading(false)
@@ -155,7 +199,8 @@ export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen
             setStep(1)
             setAmount("10")
             setUnitPrice("")
-            setRestockPassword("")
+            // Keep Password in state if it was verified, but consider updating lastVerifiedAt
+            setLastVerifiedAt(Date.now()) 
             setActiveTab('overview') // Switch back to overview to show update
             fetchInventory() 
         } else {
@@ -165,15 +210,38 @@ export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen
                 setRestockPassword("")
             }
         }
-    } catch (err) {
+    } catch {
         setError("連線錯誤")
     } finally {
         setFormLoading(false)
     }
   }
 
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open)
+    if (!open) {
+        // When closing:
+        // 1. If not verified (step 1), clear sensitive password
+        if (step === 1) {
+            setRestockPassword("")
+        }
+        // 2. Always clear form transient data
+        setAmount("10")
+        setUnitPrice("")
+        setError(null)
+    }
+  }
+
+  const handleTabChange = (tab: 'overview' | 'restock' | 'history' | 'types') => {
+      // If moving away from restock and haven't verified, clear password
+      if (activeTab === 'restock' && tab !== 'restock' && step === 1) {
+          setRestockPassword("")
+      }
+      setActiveTab(tab)
+  }
+
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {trigger || (
              <Button 
@@ -192,10 +260,11 @@ export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen
                     <Package className="text-indigo-600" />
                     <span>庫存管理中心</span>
                 </DialogTitle>
-                <div className="flex gap-2 mt-4">
-                     <TabButton active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} icon={<Archive size={16} />} label="庫存總覽" />
-                     <TabButton active={activeTab === 'restock'} onClick={() => setActiveTab('restock')} icon={<PlusCircle size={16} />} label="入庫登記" />
-                     <TabButton active={activeTab === 'history'} onClick={() => setActiveTab('history')} icon={<History size={16} />} label="歷史紀錄" />
+                <div className="flex gap-2 mt-4 overflow-x-auto pb-2 -mx-1 px-1">
+                     <TabButton active={activeTab === 'overview'} onClick={() => handleTabChange('overview')} icon={<Archive size={16} />} label="庫存" />
+                     <TabButton active={activeTab === 'restock'} onClick={() => handleTabChange('restock')} icon={<PlusCircle size={16} />} label="入庫" />
+                     <TabButton active={activeTab === 'history'} onClick={() => handleTabChange('history')} icon={<History size={16} />} label="紀錄" />
+                     <TabButton active={activeTab === 'types'} onClick={() => handleTabChange('types')} icon={<Settings2 size={16} />} label="球種" />
                 </div>
             </DialogHeader>
         </div>
@@ -259,7 +328,7 @@ export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen
                                     type="password" 
                                     value={restockPassword} 
                                     onChange={e => setRestockPassword(e.target.value)} 
-                                    placeholder="輸入密碼 (預設 1111)" 
+                                    placeholder={hasRestockPassword ? "輸入密碼" : "輸入密碼 (預設 1111)"} 
                                     className="text-center text-lg tracking-widest h-12"
                                     autoFocus
                                 />
@@ -284,7 +353,6 @@ export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen
                                      >
                                          {types.map(t => <option key={t.id} value={t.id}>{t.brand} {t.name}</option>)}
                                      </select>
-                                     <ShuttlecockTypeManager onTypeAdded={fetchTypes} />
                                  </div>
                                  <div className="grid grid-cols-2 gap-4">
                                      <div className="space-y-1">
@@ -373,6 +441,12 @@ export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen
                             </table>
                         </div>
                     )}
+                </div>
+            )}
+            
+            {activeTab === 'types' && (
+                <div className="max-w-3xl mx-auto py-4 px-4">
+                    <ShuttlecockTypeManager onTypeAdded={handleTypeChange} />
                 </div>
             )}
         </div>
