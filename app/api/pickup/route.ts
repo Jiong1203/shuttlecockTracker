@@ -28,7 +28,7 @@ export async function GET() {
 
     const { data, error } = await supabase
       .from('pickup_records')
-      .select('*')
+      .select('*, shuttlecock_types(brand, name)')
       .eq('group_id', groupId)
       .order('created_at', { ascending: false })
 

@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
   const supabase = await createClient()
 
   try {
@@ -28,11 +28,19 @@ export async function GET() {
       return NextResponse.json({ error: 'User has no group assigned' }, { status: 403 })
     }
 
-    const { data, error } = await supabase
+    const { searchParams } = new URL(request.url)
+    const showAll = searchParams.get('all') === 'true'
+
+    let query = supabase
       .from('inventory_summary')
       .select('*')
       .eq('group_id', profile.group_id)
-      .eq('is_active', true)
+    
+    if (!showAll) {
+      query = query.eq('is_active', true)
+    }
+
+    const { data, error } = await query
 
     if (error) {
       console.error('Error fetching inventory summary:', error)

@@ -274,6 +274,8 @@ CREATE POLICY "Group members can view restock" ON public.restock_records
 
 CREATE POLICY "Group members can create restock" ON public.restock_records
     FOR INSERT WITH CHECK (group_id = (SELECT group_id FROM public.profiles WHERE id = auth.uid()));
+CREATE POLICY "Group members can delete restock" ON public.restock_records
+    FOR DELETE USING (group_id = (SELECT group_id FROM public.profiles WHERE id = auth.uid()));
     
 -- Pickup Records (既有的策略可能需要更新，這裡確保沒問題)
 -- 使用既有的 "Group members can access pickup_records" 即可，因為它只檢查 group_id

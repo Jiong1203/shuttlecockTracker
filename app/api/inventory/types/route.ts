@@ -17,6 +17,12 @@ async function getGroupId(supabase: SupabaseClient) {
   return profile?.group_id
 }
 
+interface TypeUpdate {
+    is_active?: boolean;
+    brand?: string;
+    name?: string;
+}
+
 export async function GET(request: Request) {
   const supabase = await createClient()
   const { searchParams } = new URL(request.url)
@@ -28,20 +34,41 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    let query = supabase
+    // 獲取球種基本資料 (移除 View Join 避免重複)
+    const { data: rawTypes, error: typesError } = await supabase
       .from('shuttlecock_types')
       .select('*')
       .eq('group_id', groupId)
+      .order('created_at', { ascending: false })
     
-    if (!showAll) {
-      query = query.eq('is_active', true)
+    if (typesError) {
+      return NextResponse.json({ error: typesError.message }, { status: 500 })
     }
 
-    const { data, error } = await query.order('created_at', { ascending: false })
+    // 獲取有紀錄的球種 ID 列表 (從 inventory_summary 獲取)
+    const { data: summaries } = await supabase
+      .from('inventory_summary')
+      .select('shuttlecock_type_id, total_picked')
+      .eq('group_id', groupId)
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
+    const recordMap = new Map((summaries || []).map(s => [s.shuttlecock_type_id, s.total_picked > 0]));
+
+    // 處理回傳結構，加上 can_edit 與 has_records 標記，並透過 Set 與 filter 確保唯一性
+    const seenIds = new Set();
+    const data = (rawTypes || [])
+        .filter(item => {
+            if (seenIds.has(item.id)) return false;
+            seenIds.add(item.id);
+            return showAll || item.is_active;
+        })
+        .map(item => ({
+            id: item.id,
+            brand: item.brand,
+            name: item.name,
+            is_active: item.is_active,
+            can_edit: !item.created_by && (item.brand === 'System' && item.name === '預設系統球種'),
+            has_records: recordMap.get(item.id) || false
+        }));
 
     return NextResponse.json(data)
   } catch (err) {
@@ -94,15 +121,35 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id, is_active } = await request.json()
+    const { id, is_active, brand, name } = await request.json()
 
     if (!id) {
       return NextResponse.json({ error: 'Missing type ID' }, { status: 400 })
     }
 
+    // 更新內容準備
+    const updates: TypeUpdate = {}
+    if (is_active !== undefined) updates.is_active = is_active
+    
+    // 如果帶有 brand 或 name，執行系統球種檢查
+    if (brand !== undefined || name !== undefined) {
+        const { data: typeToCheck } = await supabase
+            .from('shuttlecock_types')
+            .select('created_by')
+            .eq('id', id)
+            .single()
+        
+        if (typeToCheck?.created_by) {
+            return NextResponse.json({ error: '僅限系統預設球種可編輯內容' }, { status: 403 })
+        }
+        
+        if (brand) updates.brand = brand
+        if (name) updates.name = name
+    }
+
     const { data, error } = await supabase
       .from('shuttlecock_types')
-      .update({ is_active })
+      .update(updates)
       .eq('id', id)
       .eq('group_id', groupId)
       .select()
@@ -115,6 +162,80 @@ export async function PATCH(request: Request) {
     return NextResponse.json(data)
   } catch (err) {
     console.error("Error updating type:", err)
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+  }
+}
+
+export async function DELETE(request: Request) {
+  const supabase = await createClient()
+  try {
+    const groupId = await getGroupId(supabase)
+    if (!groupId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+
+    if (!id) {
+      return NextResponse.json({ error: 'Missing type ID' }, { status: 400 })
+    }
+
+    // 1. 嚴格檢查領取紀錄 (直接查詢領取紀錄表)
+    const { data: pickupRecord, error: pickupError } = await supabase
+        .from('pickup_records')
+        .select('id')
+        .eq('shuttlecock_type_id', id)
+        .limit(1)
+        .maybeSingle()
+    
+    if (pickupError) throw pickupError;
+    if (pickupRecord) {
+        return NextResponse.json({ error: '此球種已有領取紀錄，為了歷史報表完整性無法刪除 (請使用隱藏功能)' }, { status: 400 })
+    }
+
+    // 2. 自動清理相關進貨紀錄 (不論數量，只要無領取即允許刪除)
+    // 確保帶上 group_id 以符合 RLS DELETE 通道
+    const { error: restockClearError } = await supabase
+        .from('restock_records')
+        .delete()
+        .eq('shuttlecock_type_id', id)
+        .eq('group_id', groupId)
+    
+    if (restockClearError) {
+        console.error("Failed to clear restock records:", restockClearError)
+        return NextResponse.json({ error: `清理進貨紀錄時發生錯誤: ${restockClearError.message}` }, { status: 500 })
+    };
+
+    // 3. 嘗試清理可能存在的舊配置表關聯 (防禦性清理)
+    try {
+        await supabase
+            .from('inventory_config')
+            .delete()
+            .eq('shuttlecock_type_id', id)
+    } catch {
+        // Ignore if table/column doesn't exist
+    }
+
+    const { error: deleteError } = await supabase
+      .from('shuttlecock_types')
+      .delete()
+      .eq('id', id)
+      .eq('group_id', groupId)
+
+    if (deleteError) {
+        console.error("Full delete error details:", deleteError)
+        if (deleteError.code === '23503') {
+            return NextResponse.json({ 
+                error: '資料庫仍存有與此球種關聯的資料 (如結算紀錄或隱藏紀錄)，請聯繫系統管理員，或改用「隱藏」功能。' 
+            }, { status: 400 })
+        }
+        return NextResponse.json({ error: deleteError.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ message: 'Deleted successfully' })
+  } catch (err) {
+    console.error("Error deleting type:", err)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }

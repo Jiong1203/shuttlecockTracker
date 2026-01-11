@@ -41,7 +41,7 @@ export function PickupForm({ onSuccess, disabled = false }: PickupFormProps) {
 
   const fetchTypes = async () => {
     try {
-      const res = await fetch('/api/inventory/types')
+      const res = await fetch('/api/inventory/types?all=true')
       const data = await res.json()
       if (Array.isArray(data)) {
         setTypes(data)

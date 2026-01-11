@@ -90,7 +90,7 @@ export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen
   const fetchInventory = useCallback(async () => {
     try {
       setLoading(true)
-      const res = await fetch('/api/inventory')
+      const res = await fetch('/api/inventory?all=true')
       if (res.ok) setInventory(await res.json())
     } catch (e) {
       console.error(e)
@@ -113,7 +113,7 @@ export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen
 
   const fetchTypes = useCallback(async () => {
     try {
-      const res = await fetch('/api/inventory/types')
+      const res = await fetch('/api/inventory/types?all=true')
       const data = await res.json()
       if (Array.isArray(data)) {
         setTypes(data)

@@ -120,6 +120,8 @@ CREATE POLICY "Group members can view restock" ON public.restock_records
     FOR SELECT USING (group_id = (SELECT group_id FROM public.profiles WHERE id = auth.uid()));
 CREATE POLICY "Group members can create restock" ON public.restock_records
     FOR INSERT WITH CHECK (group_id = (SELECT group_id FROM public.profiles WHERE id = auth.uid()));
+CREATE POLICY "Group members can delete restock" ON public.restock_records
+    FOR DELETE USING (group_id = (SELECT group_id FROM public.profiles WHERE id = auth.uid()));
 
 -- Pickup Records
 CREATE POLICY "Group members can access pickup_records" ON public.pickup_records

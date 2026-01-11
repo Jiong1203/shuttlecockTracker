@@ -32,6 +32,10 @@ interface PickupRecord {
     picker_name: string
     quantity: number
     created_at: string
+    shuttlecock_types?: {
+      brand: string
+      name: string
+    }
 }
 
 export default function Home() {

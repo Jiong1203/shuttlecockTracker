@@ -13,7 +13,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Settings, ShieldCheck, KeyRound, Type, Loader2, Mail } from "lucide-react"
+import { Settings, ShieldCheck, KeyRound, Type, Loader2, Mail, AlertTriangle } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 interface GroupSettingsDialogProps {
   currentGroupName: string
@@ -33,6 +34,9 @@ export function GroupSettingsDialog({ currentGroupName, onUpdateSuccess }: Group
   const [newRestockPassword, setNewRestockPassword] = useState("")
   const [hasRestockPassword, setHasRestockPassword] = useState(false)
   const [restockStep, setRestockStep] = useState<'info' | 'verify' | 'update'>('info')
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteConfirmName, setDeleteConfirmName] = useState("")
+  const router = useRouter()
 
   // Fetch current detailed settings when opening
   useEffect(() => {
@@ -45,6 +49,8 @@ export function GroupSettingsDialog({ currentGroupName, onUpdateSuccess }: Group
       setCurrentRestockPassword("")
       setNewRestockPassword("")
       setRestockStep('info')
+      setShowDeleteConfirm(false)
+      setDeleteConfirmName("")
     }
   }, [open, currentGroupName])
 
@@ -189,6 +195,30 @@ export function GroupSettingsDialog({ currentGroupName, onUpdateSuccess }: Group
       fetchSettings()
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : '操作失敗'
+      alert(message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDeleteGroup = async () => {
+    if (deleteConfirmName !== currentGroupName) return
+    setLoading(true)
+    try {
+      const res = await fetch('/api/group', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmName: deleteConfirmName })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || '刪除失敗')
+      
+      alert('您的球團與帳號已永久移除。')
+      setOpen(false)
+      router.push('/login')
+      router.refresh()
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : '刪除失敗'
       alert(message)
     } finally {
       setLoading(false)
@@ -402,6 +432,64 @@ export function GroupSettingsDialog({ currentGroupName, onUpdateSuccess }: Group
               )}
             </div>
             <p className="text-[10px] text-slate-400 dark:text-slate-500 text-center">入庫登記為敏感操作，建議設定專屬密碼與球團成員共享。</p>
+          </div>
+
+          <hr className="border-slate-100" />
+
+          {/* Danger Zone */}
+          <div className="pt-2">
+            {!showDeleteConfirm ? (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="w-full text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 font-bold"
+                onClick={() => setShowDeleteConfirm(true)}
+              >
+                刪除球團與帳號
+              </Button>
+            ) : (
+              <div className="p-4 rounded-xl border border-red-200 bg-red-50/50 dark:bg-red-950/10 dark:border-red-900/50 space-y-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-bold text-red-700 dark:text-red-400">這是不可逆的操作！</p>
+                    <p className="text-xs text-red-600/80 dark:text-red-400/80">
+                      刪除後將永久移除所有球種、入庫紀錄、領取歷史。請在下方輸入球團名稱 <span className="font-mono bg-white dark:bg-black px-1 rounded border">{currentGroupName}</span> 以確認。
+                    </p>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <Input
+                    placeholder="請在此輸入球團名稱"
+                    value={deleteConfirmName}
+                    onChange={(e) => setDeleteConfirmName(e.target.value)}
+                    className="h-9 border-red-200 focus-visible:ring-red-500"
+                  />
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="flex-1 h-9"
+                      onClick={() => {
+                        setShowDeleteConfirm(false)
+                        setDeleteConfirmName("")
+                      }}
+                    >
+                      取消
+                    </Button>
+                    <Button 
+                      variant="destructive" 
+                      size="sm" 
+                      className="flex-1 h-9 font-bold"
+                      disabled={loading || deleteConfirmName !== currentGroupName}
+                      onClick={handleDeleteGroup}
+                    >
+                      {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "確認永久刪除"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

@@ -25,6 +25,10 @@ interface PickupRecord {
   picker_name: string
   quantity: number
   created_at: string
+  shuttlecock_types?: {
+    brand: string
+    name: string
+  }
 }
 
 interface PickupHistoryProps {
@@ -66,6 +70,7 @@ export function PickupHistory({ records, onDelete }: PickupHistoryProps) {
           <TableHeader className="bg-muted/50">
             <TableRow>
               <TableHead className="font-bold">領取人</TableHead>
+              <TableHead className="font-bold">球種</TableHead>
               <TableHead className="text-right font-bold">桶數</TableHead>
               <TableHead className="text-right font-bold w-[120px]">時間</TableHead>
               <TableHead className="text-center font-bold w-[60px]">操作</TableHead>
@@ -74,7 +79,7 @@ export function PickupHistory({ records, onDelete }: PickupHistoryProps) {
           <TableBody>
             {records.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center py-8 text-slate-400">
+                <TableCell colSpan={5} className="text-center py-8 text-slate-400">
                   尚無領取紀錄
                 </TableCell>
               </TableRow>
@@ -82,6 +87,12 @@ export function PickupHistory({ records, onDelete }: PickupHistoryProps) {
               records.map((record) => (
                 <TableRow key={record.id} className="hover:bg-muted/30 transition-colors group">
                   <TableCell className="font-medium text-foreground">{record.picker_name}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold">{record.shuttlecock_types?.brand}</span>
+                      <span className="text-[10px] text-muted-foreground">{record.shuttlecock_types?.name}</span>
+                    </div>
+                  </TableCell>
                   <TableCell className="text-right text-foreground font-semibold">{record.quantity} 桶</TableCell>
                   <TableCell className="text-right text-muted-foreground text-xs">
                     {format(new Date(record.created_at), 'MM/dd HH:mm', { locale: zhTW })}
