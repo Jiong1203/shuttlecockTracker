@@ -73,7 +73,7 @@ export function InventoryDisplay({ stocks, currentStock }: InventoryDisplayProps
                 {isLowStock && stock.current_stock > 0 && (
                 <div className="flex items-center justify-center gap-2 text-red-500 text-xs font-bold animate-pulse mt-2 bg-red-50 dark:bg-red-950/30 p-2 rounded-lg">
                     <AlertCircle size={16} />
-                    <span>庫存不足</span>
+                    <span>庫存即將耗盡，請盡速補充</span>
                 </div>
                 )}
                 
