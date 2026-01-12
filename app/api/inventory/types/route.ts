@@ -55,8 +55,7 @@ export async function GET(request: Request) {
 
     const recordMap = new Map((summaries || []).map(s => [s.shuttlecock_type_id, s.total_picked > 0]));
 
-    // 獲取當前使用者以判斷編輯權限
-    const { data: { user } } = await supabase.auth.getUser()
+
 
     // 處理回傳結構，加上 can_edit 與 has_records 標記，並透過 Set 與 filter 確保唯一性
     const seenIds = new Set();
@@ -71,8 +70,9 @@ export async function GET(request: Request) {
             brand: item.brand,
             name: item.name,
             is_active: item.is_active,
-            // 允許編輯的情況：1. 系統預設球種 2. 自己建立的球種
-            can_edit: (!item.created_by && (item.brand === 'System' && item.name === '預設系統球種')) || (user && item.created_by === user.id),
+            // 允許編輯的情況：僅限系統預設球種 (一旦編輯過變成使用者自定義球種後，即不可再編輯)
+            // 這是為了讓舊用戶進行一次性的資料遷移
+            can_edit: !item.created_by && item.brand === 'System' && item.name === '預設系統球種',
             has_records: recordMap.get(item.id) || false
         }));
 
@@ -151,16 +151,15 @@ export async function PATCH(request: Request) {
             .single()
         
         // 檢查權限：
-        // 1. 如果有 created_by，必須是當前使用者
-        // 2. 如果沒有 created_by (系統球種)，允許編輯（並將在下方接管所有權）
-        if (typeToCheck?.created_by && typeToCheck.created_by !== user.id) {
-            return NextResponse.json({ error: '您無權限編輯此球種' }, { status: 403 })
+        // 僅允許編輯「系統預設球種」 (created_by 為空)
+        // 一旦已有 created_by (代表已被使用者更新過接管)，則不允許再次編輯
+        if (typeToCheck?.created_by) {
+            return NextResponse.json({ error: '此球種已更新過，無法再次編輯' }, { status: 403 })
         }
         
-        // 3. 再次確認系統球種的特徵 (雖然 created_by check 已經涵蓋，但雙重確認更安全)
-        if (!typeToCheck?.created_by && (typeToCheck?.brand !== 'System' || typeToCheck?.name !== '預設系統球種')) {
-             // 理論上不會發生，因為沒有 created_by 的應該只有那一個，但防禦性編碼
-             return NextResponse.json({ error: '無法編輯此系統內容' }, { status: 403 })
+        // 3. 再次確認系統球種的特徵
+        if (typeToCheck?.brand !== 'System' || typeToCheck?.name !== '預設系統球種') {
+             return NextResponse.json({ error: '無法編輯此內容' }, { status: 403 })
         }
 
         if (brand) updates.brand = brand
