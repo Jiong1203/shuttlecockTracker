@@ -59,8 +59,9 @@ export function WelcomeGuide({ currentStock, onDismiss, onStartSetup }: WelcomeG
 
         <div className="py-4 space-y-4">
           <ol className="text-sm text-foreground space-y-3 ml-4 list-decimal">
-            <li className="pl-2">盤點您的實際羽球庫存數量</li>
-            <li className="pl-2">點擊下方「立即設定」開始入庫登記</li>
+            <li className="pl-2">點擊「庫存管理」按鈕進入管理介面</li>
+            <li className="pl-2">前往「球種」頁面建立您的羽球品牌與型號</li>
+            <li className="pl-2">至「入庫」頁面進行庫存數量登錄</li>
           </ol>
 
           <div className="flex items-start gap-3 bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800/50">

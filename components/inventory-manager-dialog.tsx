@@ -30,6 +30,7 @@ interface InventoryManagerDialogProps {
   onUpdate?: () => void
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  initialTab?: 'overview' | 'restock' | 'history' | 'types'
 }
 
 interface InventoryItem {
@@ -60,7 +61,7 @@ interface ShuttlecockType {
   is_active: boolean
 }
 
-export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen, onOpenChange }: InventoryManagerDialogProps) {
+export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen, onOpenChange, initialTab = 'overview' }: InventoryManagerDialogProps) {
   const [internalOpen, setInternalOpen] = useState(false)
   const isOpen = controlledOpen ?? internalOpen
   const setIsOpen = onOpenChange ?? setInternalOpen
@@ -145,6 +146,27 @@ export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen
   }, [fetchTypes, fetchInventory, onUpdate])
 
   // Effect to load data when tab changes or dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      if (!internalOpen && activeTab !== initialTab) {
+         // Sync tab only when just opening (checking controlled open vs internal or just use a ref to track open state change? 
+         // Actually, simpler: just set it effectively. But we don't want to reset it if user changes tab while open.
+         // Let's rely on a separate effect tracking open change or just use a ref.
+         // However, for this simple case: if !isOpen -> isOpen, set activeTab = initialTab.
+      }
+    }
+  }, [isOpen]) 
+
+  // Better approach: use a previous value of isOpen to detect opening edge
+  const [prevOpen, setPrevOpen] = useState(false)
+  
+  useEffect(() => {
+    if (isOpen && !prevOpen) {
+       setActiveTab(initialTab)
+    }
+    setPrevOpen(isOpen)
+  }, [isOpen, prevOpen, initialTab])
+
   useEffect(() => {
     if (isOpen) {
       if (activeTab === 'overview') fetchInventory()
@@ -314,7 +336,28 @@ export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen
 
             {activeTab === 'restock' && (
                 <div className="max-w-md mx-auto py-4">
-                    {step === 1 ? (
+                  {loading ? (
+                    <div className="flex justify-center p-8"><Loader2 className="animate-spin text-muted-foreground" /></div>
+                  ) : types.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center space-y-4 py-8 text-center animate-in fade-in zoom-in-95 duration-300">
+                      <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center">
+                        <PackagePlus className="w-8 h-8 text-muted-foreground/50" />
+                      </div>
+                      <div className="space-y-2 max-w-[280px]">
+                        <h3 className="font-bold text-lg">尚未建立球種</h3>
+                        <p className="text-sm text-muted-foreground">
+                          進行入庫登記前，請先建立您的羽球品牌與型號資料。
+                        </p>
+                      </div>
+                      <Button 
+                        onClick={() => setActiveTab('types')}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2"
+                      >
+                        <Settings2 className="w-4 h-4" />
+                        前往建立球種
+                      </Button>
+                    </div>
+                  ) : step === 1 ? (
                          <form onSubmit={handleVerifyPassword} className="space-y-6">
                             <div className="text-center space-y-2">
                                 <div className="mx-auto w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center text-indigo-600">

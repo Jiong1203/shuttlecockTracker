@@ -233,7 +233,7 @@ export function GroupSettingsDialog({ currentGroupName, onUpdateSuccess }: Group
           <span className="hidden sm:inline">帳號設定</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShieldCheck className="w-5 h-5 text-blue-600 dark:text-blue-500" />
@@ -244,7 +244,7 @@ export function GroupSettingsDialog({ currentGroupName, onUpdateSuccess }: Group
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-6 py-4">
+        <div className="grid gap-6 py-4 overflow-y-auto px-1 flex-1">
           {/* Group Name Section */}
           <div className="space-y-2">
             <Label htmlFor="name" className="flex items-center gap-2 text-foreground font-bold">

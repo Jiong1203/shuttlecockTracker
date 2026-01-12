@@ -40,6 +40,7 @@ interface PickupRecord {
 
 export default function Home() {
   const [inventoryManagerOpen, setInventoryManagerOpen] = useState(false)
+  const [inventoryInitialTab, setInventoryInitialTab] = useState<'overview' | 'restock' | 'history' | 'types'>('overview')
   const [inventory, setInventory] = useState<InventorySummary[] | null>(null)
   const [records, setRecords] = useState<PickupRecord[]>([])
   const [loading, setLoading] = useState(true)
@@ -183,7 +184,10 @@ export default function Home() {
             {totalCurrentStock === 0 && (
               <WelcomeGuide 
                 currentStock={0} 
-                onStartSetup={() => setInventoryManagerOpen(true)}
+                onStartSetup={() => {
+                  setInventoryInitialTab('types')
+                  setInventoryManagerOpen(true)
+                }}
               />
             )}
           </>
@@ -196,6 +200,7 @@ export default function Home() {
               open={inventoryManagerOpen} 
               onOpenChange={setInventoryManagerOpen}
               onUpdate={fetchData} 
+              initialTab={inventoryInitialTab}
            />
         </div>
         <div className="w-full max-w-2xl mx-auto">
