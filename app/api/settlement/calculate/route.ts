@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { start_date, end_date, picker_name } = await request.json()
+    const { start_date, end_date, picker_name, shuttlecock_type_id } = await request.json()
 
     // 1. 獲取所有入庫紀錄 (依時間排序)
     const { data: restocks, error: restockError } = await supabase
@@ -70,7 +70,12 @@ export async function POST(request: Request) {
     if (pickupError) throw pickupError;
 
     // 將資料依球種分組
-    const typeIds = Array.from(new Set((restocks as RestockRecord[]).map(r => r.shuttlecock_type_id)));
+    let typeIds = Array.from(new Set((restocks as RestockRecord[]).map(r => r.shuttlecock_type_id)));
+    
+    // 如果有指定球種，則過濾
+    if (shuttlecock_type_id) {
+        typeIds = typeIds.filter(id => id === shuttlecock_type_id);
+    }
     
     // 結果物件
     const result_details: {

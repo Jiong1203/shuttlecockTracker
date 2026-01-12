@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Calculator, Calendar, User } from "lucide-react"
+import { Calculator, Calendar, User, Package } from "lucide-react"
 
 interface UsedBatch {
     price: number
@@ -36,12 +36,14 @@ interface PickupRecord {
 
 interface SettlementDialogProps {
   records?: PickupRecord[] 
+  types?: { shuttlecock_type_id: string, brand: string, name: string }[]
 }
 
-export function SettlementDialog({ records }: SettlementDialogProps) {
+export function SettlementDialog({ records, types = [] }: SettlementDialogProps) {
   const [startDate, setStartDate] = useState<string>("")
   const [endDate, setEndDate] = useState<string>("")
   const [name, setName] = useState<string>("")
+  const [selectedTypeId, setSelectedTypeId] = useState<string>("")
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<SettlementResult | null>(null)
 
@@ -55,7 +57,12 @@ export function SettlementDialog({ records }: SettlementDialogProps) {
           const res = await fetch('/api/settlement/calculate', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ start_date: startDate, end_date: endDate, picker_name: name })
+              body: JSON.stringify({ 
+                  start_date: startDate, 
+                  end_date: endDate, 
+                  picker_name: name,
+                  shuttlecock_type_id: selectedTypeId 
+              })
           })
           if (!res.ok) throw new Error("Calculation failed")
           const data = await res.json()
@@ -112,20 +119,41 @@ export function SettlementDialog({ records }: SettlementDialogProps) {
             </div>
           </div>
 
-          <div className="grid gap-2">
-             <Label className="flex items-center gap-2 text-muted-foreground dark:text-white">
-                <User size={16} /> 領取人 (選填)
-             </Label>
-             <select
-                className="flex h-12 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-             >
-                <option value="">全部領取人</option>
-                {uniquePickers.map((picker, idx) => (
-                    <option key={idx} value={picker}>{picker}</option>
-                ))}
-             </select>
+          {/* 篩選條件：球種 與 領取人 */}
+          <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                 <Label className="flex items-center gap-2 text-muted-foreground dark:text-white">
+                    <Package size={16} /> 球種 (選填)
+                 </Label>
+                 <select
+                    className="flex h-12 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    value={selectedTypeId}
+                    onChange={(e) => setSelectedTypeId(e.target.value)}
+                 >
+                    <option value="">全部球種</option>
+                    {types.map((type) => (
+                        <option key={type.shuttlecock_type_id} value={type.shuttlecock_type_id}>
+                            {type.brand} {type.name}
+                        </option>
+                    ))}
+                 </select>
+              </div>
+
+              <div className="grid gap-2">
+                 <Label className="flex items-center gap-2 text-muted-foreground dark:text-white">
+                    <User size={16} /> 領取人 (選填)
+                 </Label>
+                 <select
+                    className="flex h-12 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                 >
+                    <option value="">全部領取人</option>
+                    {uniquePickers.map((picker, idx) => (
+                        <option key={idx} value={picker}>{picker}</option>
+                    ))}
+                 </select>
+              </div>
           </div>
 
           <Button onClick={handleCalculate} disabled={loading} className="w-full h-12 text-lg font-bold">
@@ -147,10 +175,17 @@ export function SettlementDialog({ records }: SettlementDialogProps) {
 
                   <div className="space-y-3">
                       <h4 className="font-bold text-sm text-muted-foreground uppercase tracking-wider">球種消耗明細</h4>
-                      {result.details.map((detail) => (
+                  {result.details.map((detail) => {
+                      const typeInfo = types.find(t => t.shuttlecock_type_id === detail.type_id)
+                      const typeName = typeInfo ? `${typeInfo.brand} ${typeInfo.name}` : '未知球種'
+                      
+                      return (
                           <div key={detail.type_id} className="bg-card border border-border p-4 rounded-xl shadow-sm">
-                              <div className="flex justify-between items-center mb-2">
-                                  <span className="font-bold">消耗量: {detail.total_quantity} 桶</span>
+                              <div className="flex justify-between items-center mb-1">
+                                  <span className="font-bold text-lg text-emerald-700 dark:text-emerald-400">{typeName}</span>
+                              </div>
+                              <div className="flex justify-between items-center mb-2 text-sm">
+                                  <span>消耗量: <span className="font-bold">{detail.total_quantity}</span> 桶</span>
                                   <span className="font-bold text-emerald-600">${detail.total_cost.toLocaleString()}</span>
                               </div>
                                <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
@@ -163,7 +198,8 @@ export function SettlementDialog({ records }: SettlementDialogProps) {
                                    <p className="mt-2 text-right">平均單價: ${Math.round(detail.average_cost)}</p>
                                </div>
                           </div>
-                      ))}
+                      )
+                  })}
                   </div>
               </div>
           )}

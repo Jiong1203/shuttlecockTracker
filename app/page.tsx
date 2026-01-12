@@ -52,7 +52,7 @@ export default function Home() {
   const fetchData = useCallback(async () => {
     try {
       const [invRes, pickRes] = await Promise.all([
-        fetch('/api/inventory', { cache: 'no-store' }),
+        fetch('/api/inventory?all=true', { cache: 'no-store' }),
         fetch('/api/pickup', { cache: 'no-store' })
       ])
       
@@ -179,7 +179,7 @@ export default function Home() {
 
         {inventory && (
           <>
-            <InventoryDisplay stocks={inventory} />
+            <InventoryDisplay stocks={inventory.filter(i => i.is_active)} />
             
             {totalCurrentStock === 0 && (
               <WelcomeGuide 
@@ -195,7 +195,7 @@ export default function Home() {
 
         <div className="flex flex-row justify-center items-center gap-3 w-full max-w-2xl mx-auto">
            <PickupForm onSuccess={fetchData} disabled={totalCurrentStock === 0} />
-           <SettlementDialog records={records} />
+           <SettlementDialog records={records} types={inventory || []} />
            <InventoryManagerDialog 
               open={inventoryManagerOpen} 
               onOpenChange={setInventoryManagerOpen}

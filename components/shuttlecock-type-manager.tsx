@@ -172,6 +172,56 @@ export function ShuttlecockTypeManager({ onTypeAdded }: ShuttlecockTypeManagerPr
       </div>
 
       <div className="space-y-4">
+        {isAdding && (
+            <div className="mb-4 p-6 rounded-2xl border-2 border-dashed border-emerald-100 dark:border-emerald-900/30 bg-emerald-50/20 dark:bg-emerald-950/5 animate-in slide-in-from-top-4 duration-300">
+                <div className="flex justify-between items-center mb-6">
+                    <div className="flex items-center gap-2">
+                        <div className="p-2 bg-emerald-100 dark:bg-emerald-900/50 rounded-lg">
+                            <Plus className="h-4 w-4 text-emerald-600" />
+                        </div>
+                        <h5 className="text-sm font-bold text-emerald-700 dark:text-emerald-400">填寫新球種資料</h5>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-emerald-100 dark:hover:bg-emerald-900/50" onClick={() => setIsAdding(false)}>
+                        <X className="h-4 w-4" />
+                    </Button>
+                </div>
+                <form onSubmit={handleSubmit} className="space-y-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="new-brand" className="text-xs font-bold ml-1">品牌</Label>
+                            <Input 
+                                id="new-brand" 
+                                value={brand} 
+                                onChange={e => setBrand(e.target.value)} 
+                                placeholder="例如: RSL" 
+                                required 
+                                className="h-11 bg-background border-muted-foreground/20 focus:border-emerald-500 shadow-sm"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="new-name" className="text-xs font-bold ml-1">型號/名稱</Label>
+                            <Input 
+                                id="new-name" 
+                                value={name} 
+                                onChange={e => setName(e.target.value)} 
+                                placeholder="例如: 4號球" 
+                                required
+                                className="h-11 bg-background border-muted-foreground/20 focus:border-emerald-500 shadow-sm" 
+                            />
+                        </div>
+                    </div>
+                    <div className="flex gap-3">
+                        <Button type="button" variant="outline" className="flex-1 h-11 font-bold" onClick={() => setIsAdding(false)}>
+                            取消
+                        </Button>
+                        <Button type="submit" className="flex-[2] h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-lg shadow-emerald-500/20" disabled={loading}>
+                            {loading ? "處理中..." : "確認並新增球種"}
+                        </Button>
+                    </div>
+                </form>
+            </div>
+        )}
+
         <div className={`grid grid-cols-1 md:grid-cols-2 gap-3 overflow-y-auto pr-2 ${types.length > 4 ? 'max-h-[500px]' : ''}`}>
             {listLoading && types.length === 0 ? (
                 <div className="col-span-full text-center py-12 text-muted-foreground bg-muted/20 rounded-xl border border-dashed">載入中...</div>
@@ -236,55 +286,7 @@ export function ShuttlecockTypeManager({ onTypeAdded }: ShuttlecockTypeManagerPr
             )}
         </div>
 
-        {isAdding && (
-            <div className="mt-4 p-6 rounded-2xl border-2 border-dashed border-emerald-100 dark:border-emerald-900/30 bg-emerald-50/20 dark:bg-emerald-950/5 animate-in slide-in-from-top-4 duration-300">
-                <div className="flex justify-between items-center mb-6">
-                    <div className="flex items-center gap-2">
-                        <div className="p-2 bg-emerald-100 dark:bg-emerald-900/50 rounded-lg">
-                            <Plus className="h-4 w-4 text-emerald-600" />
-                        </div>
-                        <h5 className="text-sm font-bold text-emerald-700 dark:text-emerald-400">填寫新球種資料</h5>
-                    </div>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-emerald-100 dark:hover:bg-emerald-900/50" onClick={() => setIsAdding(false)}>
-                        <X className="h-4 w-4" />
-                    </Button>
-                </div>
-                <form onSubmit={handleSubmit} className="space-y-5">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="new-brand" className="text-xs font-bold ml-1">品牌</Label>
-                            <Input 
-                                id="new-brand" 
-                                value={brand} 
-                                onChange={e => setBrand(e.target.value)} 
-                                placeholder="例如: RSL" 
-                                required 
-                                className="h-11 bg-background border-muted-foreground/20 focus:border-emerald-500 shadow-sm"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="new-name" className="text-xs font-bold ml-1">型號/名稱</Label>
-                            <Input 
-                                id="new-name" 
-                                value={name} 
-                                onChange={e => setName(e.target.value)} 
-                                placeholder="例如: 4號球" 
-                                required
-                                className="h-11 bg-background border-muted-foreground/20 focus:border-emerald-500 shadow-sm" 
-                            />
-                        </div>
-                    </div>
-                    <div className="flex gap-3">
-                        <Button type="button" variant="outline" className="flex-1 h-11 font-bold" onClick={() => setIsAdding(false)}>
-                            取消
-                        </Button>
-                        <Button type="submit" className="flex-[2] h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-lg shadow-emerald-500/20" disabled={loading}>
-                            {loading ? "處理中..." : "確認並新增球種"}
-                        </Button>
-                    </div>
-                </form>
-            </div>
-        )}
+
       </div>
     </div>
   )
