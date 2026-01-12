@@ -167,7 +167,7 @@ export async function DELETE(request: Request) {
     await adminClient.from('pickup_records').delete().eq('group_id', profile.group_id)
     await adminClient.from('restock_records').delete().eq('group_id', profile.group_id)
     await adminClient.from('shuttlecock_types').delete().eq('group_id', profile.group_id)
-    await adminClient.from('inventory_config').delete().eq('group_id', profile.group_id)
+
     
     // 2. 刪除 Profiles 與 Groups
     await adminClient.from('profiles').delete().eq('group_id', profile.group_id)

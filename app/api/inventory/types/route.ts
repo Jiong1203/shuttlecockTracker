@@ -174,31 +174,16 @@ export async function PATCH(request: Request) {
 
     // 批量更新歷史金額功能 (僅更新既有紀錄)
     if (update_historical_price !== undefined && typeof update_historical_price === 'number') {
-        console.log(`[TypesAPI] Updating historical price for Type ${id}, Group ${groupId} to ${update_historical_price}`);
-        
-        // Debug: Check visibility first
-        const { count, error: pCheckError } = await supabase
-            .from('restock_records')
-            .select('*', { count: 'exact', head: true })
-            .eq('shuttlecock_type_id', id)
-            .eq('group_id', groupId);
-        
-        console.log(`[TypesAPI] Use ${user.id} Pre-check found ${count} records. Error: ${pCheckError?.message}`);
-
-        const { data: updatedRecords, error: batchUpdateError } = await supabase
+        const { error: batchUpdateError } = await supabase
             .from('restock_records')
             .update({ unit_price: update_historical_price })
             .eq('shuttlecock_type_id', id)
             .eq('group_id', groupId)
-            .select()
 
         if (batchUpdateError) {
              console.error("Batch update price error:", batchUpdateError)
              return NextResponse.json({ error: 'Failed to update historical prices' }, { status: 500 })
         }
-        console.log(`[TypesAPI] Updated ${updatedRecords?.length} restock records.`);
-    } else {
-        console.log(`[TypesAPI] No historical price update requested. Value: ${update_historical_price}, Type: ${typeof update_historical_price}`);
     }
 
     const { data, error } = await supabase

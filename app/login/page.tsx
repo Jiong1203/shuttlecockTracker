@@ -80,12 +80,9 @@ export default function LoginPage() {
 
           if (profileError) throw profileError
 
-          await supabase
-            .from('inventory_config')
-            .insert({
-              group_id: groupData.id,
-              initial_quantity: 0,
-            })
+          // Inventory Config is deprecated, using restock_records (initial record not strictly needed, or can be added if design requires)
+          // await supabase.from('inventory_config').insert(...) 
+
           
           alert('球團帳號建立成功！現在可以使用該帳號進行登入。')
           setIsSignUp(false)

@@ -15,15 +15,7 @@ INSERT INTO public.groups (id, name)
 VALUES ('00000000-0000-0000-0000-000000000000', '預設系統團體')
 ON CONFLICT (id) DO NOTHING;
 
--- 3. 修改庫存設定表
-DO $$ 
-BEGIN 
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='inventory_config' AND column_name='group_id') THEN
-        ALTER TABLE public.inventory_config ADD COLUMN group_id UUID REFERENCES public.groups(id);
-        UPDATE public.inventory_config SET group_id = '00000000-0000-0000-0000-000000000000' WHERE group_id IS NULL;
-        ALTER TABLE public.inventory_config ALTER COLUMN group_id SET NOT NULL;
-    END IF;
-END $$;
+
 
 -- 4. 修改領取紀錄表
 DO $$ 
@@ -57,41 +49,21 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- 6. 更新檢視表 (先刪除舊的再建立新的)
-DROP VIEW IF EXISTS public.inventory_summary;
-CREATE VIEW public.inventory_summary AS
-SELECT 
-    g.id as group_id,
-    COALESCE((
-        SELECT initial_quantity 
-        FROM public.inventory_config ic 
-        WHERE ic.group_id = g.id 
-        ORDER BY created_at DESC LIMIT 1
-    ), 0) as initial_stock,
-    COALESCE(SUM(pr.quantity), 0) as total_picked,
-    COALESCE((
-        SELECT initial_quantity 
-        FROM public.inventory_config ic 
-        WHERE ic.group_id = g.id 
-        ORDER BY created_at DESC LIMIT 1
-    ), 0) - COALESCE(SUM(pr.quantity), 0) as current_stock
-FROM public.groups g
-LEFT JOIN public.pickup_records pr ON g.id = pr.group_id
-GROUP BY g.id;
+
 
 -- 7. 重設 RLS 策略 (清理舊的並加入新的)
 ALTER TABLE public.groups ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.inventory_config ENABLE ROW LEVEL SECURITY;
+
 ALTER TABLE public.pickup_records ENABLE ROW LEVEL SECURITY;
 
 -- 刪除可能存在的舊策略
-DROP POLICY IF EXISTS "Allow public read-write for inventory_config" ON public.inventory_config;
+
 DROP POLICY IF EXISTS "Allow public read-write for pickup_records" ON public.pickup_records;
 DROP POLICY IF EXISTS "Users can view their own group" ON public.groups;
 DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
-DROP POLICY IF EXISTS "Group members can access inventory_config" ON public.inventory_config;
+
 DROP POLICY IF EXISTS "Group members can access pickup_records" ON public.pickup_records;
 DROP POLICY IF EXISTS "Users can create groups" ON public.groups;
 DROP POLICY IF EXISTS "Users can create own profile" ON public.profiles;
@@ -120,8 +92,7 @@ CREATE POLICY "Users can update own profile" ON public.profiles
     FOR UPDATE USING (auth.uid() = id);
 
 -- Inventory Config: 只有同團體的人可以讀寫
-CREATE POLICY "Group members can access inventory_config" ON public.inventory_config
-    FOR ALL USING (group_id = (SELECT group_id FROM public.profiles WHERE id = auth.uid()));
+
 
 -- Pickup Records: 只有同團體的人可以讀寫
 CREATE POLICY "Group members can access pickup_records" ON public.pickup_records
@@ -192,22 +163,7 @@ BEGIN
             RETURNING id INTO default_type_id;
         END IF;
 
-        -- 遷移 inventory_config 到 restock_records
-        -- 邏輯：取最後一筆 inventory_config 作為初始庫存記錄
-        -- 注意：這是一個簡化的遷移，假設最後一次設定就是當前的"總累積入庫量" (或者是初始量，視原系統邏輯而定)
-        -- 原邏輯 inventory_summary 是: last(initial_quantity) - sum(pickup)
-        -- 所以我們把 last(initial_quantity) 視為一次性的 "初始入庫"
-        FOR last_config IN SELECT initial_quantity, created_at 
-                           FROM public.inventory_config 
-                           WHERE group_id = g_rec.id AND initial_quantity > 0
-                           ORDER BY created_at DESC LIMIT 1 
-        LOOP
-            -- 檢查是否已經遷移過 (避免重複執行導致重複資料)
-            IF NOT EXISTS (SELECT 1 FROM public.restock_records WHERE group_id = g_rec.id AND created_at = last_config.created_at) THEN
-                INSERT INTO public.restock_records (group_id, shuttlecock_type_id, quantity, unit_price, created_at)
-                VALUES (g_rec.id, default_type_id, last_config.initial_quantity, 0, last_config.created_at);
-            END IF;
-        END LOOP;
+
 
         -- 更新該團體的 pickup_records，補上 shuttlecock_type_id
         UPDATE public.pickup_records 

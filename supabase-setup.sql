@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS public.shuttlecock_types (
     created_by UUID REFERENCES auth.users
 );
 
--- 4. 建立入庫紀錄表 (restock_records) - 取代舊的 inventory_config
+-- 4. 建立入庫紀錄表 (restock_records)
 CREATE TABLE IF NOT EXISTS public.restock_records (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     group_id UUID REFERENCES public.groups(id) NOT NULL,
@@ -129,4 +129,3 @@ CREATE POLICY "Group members can update restock" ON public.restock_records
 CREATE POLICY "Group members can access pickup_records" ON public.pickup_records
     FOR ALL USING (group_id = (SELECT group_id FROM public.profiles WHERE id = auth.uid()));
 
--- (Legacy support: inventory_config if needed, omitted for fresh clean setup, but can be added if deprecated API still accessed)
