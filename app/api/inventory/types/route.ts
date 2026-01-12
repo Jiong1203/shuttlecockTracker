@@ -21,6 +21,8 @@ interface TypeUpdate {
     is_active?: boolean;
     brand?: string;
     name?: string;
+    created_by?: string;
+
 }
 
 export async function GET(request: Request) {
@@ -53,6 +55,9 @@ export async function GET(request: Request) {
 
     const recordMap = new Map((summaries || []).map(s => [s.shuttlecock_type_id, s.total_picked > 0]));
 
+    // 獲取當前使用者以判斷編輯權限
+    const { data: { user } } = await supabase.auth.getUser()
+
     // 處理回傳結構，加上 can_edit 與 has_records 標記，並透過 Set 與 filter 確保唯一性
     const seenIds = new Set();
     const data = (rawTypes || [])
@@ -66,7 +71,8 @@ export async function GET(request: Request) {
             brand: item.brand,
             name: item.name,
             is_active: item.is_active,
-            can_edit: !item.created_by && (item.brand === 'System' && item.name === '預設系統球種'),
+            // 允許編輯的情況：1. 系統預設球種 2. 自己建立的球種
+            can_edit: (!item.created_by && (item.brand === 'System' && item.name === '預設系統球種')) || (user && item.created_by === user.id),
             has_records: recordMap.get(item.id) || false
         }));
 
@@ -121,7 +127,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id, is_active, brand, name } = await request.json()
+    const { id, is_active, brand, name, update_historical_price } = await request.json()
 
     if (!id) {
       return NextResponse.json({ error: 'Missing type ID' }, { status: 400 })
@@ -131,20 +137,68 @@ export async function PATCH(request: Request) {
     const updates: TypeUpdate = {}
     if (is_active !== undefined) updates.is_active = is_active
     
-    // 如果帶有 brand 或 name，執行系統球種檢查
+    // 獲取當前使用者資訊 (供後續檢查使用)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    // 如果帶有 brand 或 name，執行權限檢查與資料處理
     if (brand !== undefined || name !== undefined) {
+
         const { data: typeToCheck } = await supabase
             .from('shuttlecock_types')
-            .select('created_by')
+            .select('created_by, brand, name')
             .eq('id', id)
             .single()
         
-        if (typeToCheck?.created_by) {
-            return NextResponse.json({ error: '僅限系統預設球種可編輯內容' }, { status: 403 })
+        // 檢查權限：
+        // 1. 如果有 created_by，必須是當前使用者
+        // 2. 如果沒有 created_by (系統球種)，允許編輯（並將在下方接管所有權）
+        if (typeToCheck?.created_by && typeToCheck.created_by !== user.id) {
+            return NextResponse.json({ error: '您無權限編輯此球種' }, { status: 403 })
         }
         
+        // 3. 再次確認系統球種的特徵 (雖然 created_by check 已經涵蓋，但雙重確認更安全)
+        if (!typeToCheck?.created_by && (typeToCheck?.brand !== 'System' || typeToCheck?.name !== '預設系統球種')) {
+             // 理論上不會發生，因為沒有 created_by 的應該只有那一個，但防禦性編碼
+             return NextResponse.json({ error: '無法編輯此系統內容' }, { status: 403 })
+        }
+
         if (brand) updates.brand = brand
         if (name) updates.name = name
+        
+        // 如果原本是系統球種 (created_by 為空)，現在編輯了，就要接管所有權
+        if (!typeToCheck?.created_by) {
+            updates.created_by = user.id
+        }
+    }
+
+    // 批量更新歷史金額功能 (僅更新既有紀錄)
+    if (update_historical_price !== undefined && typeof update_historical_price === 'number') {
+        console.log(`[TypesAPI] Updating historical price for Type ${id}, Group ${groupId} to ${update_historical_price}`);
+        
+        // Debug: Check visibility first
+        const { count, error: pCheckError } = await supabase
+            .from('restock_records')
+            .select('*', { count: 'exact', head: true })
+            .eq('shuttlecock_type_id', id)
+            .eq('group_id', groupId);
+        
+        console.log(`[TypesAPI] Use ${user.id} Pre-check found ${count} records. Error: ${pCheckError?.message}`);
+
+        const { data: updatedRecords, error: batchUpdateError } = await supabase
+            .from('restock_records')
+            .update({ unit_price: update_historical_price })
+            .eq('shuttlecock_type_id', id)
+            .eq('group_id', groupId)
+            .select()
+
+        if (batchUpdateError) {
+             console.error("Batch update price error:", batchUpdateError)
+             return NextResponse.json({ error: 'Failed to update historical prices' }, { status: 500 })
+        }
+        console.log(`[TypesAPI] Updated ${updatedRecords?.length} restock records.`);
+    } else {
+        console.log(`[TypesAPI] No historical price update requested. Value: ${update_historical_price}, Type: ${typeof update_historical_price}`);
     }
 
     const { data, error } = await supabase

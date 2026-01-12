@@ -31,6 +31,7 @@ export function ShuttlecockTypeManager({ onTypeAdded }: ShuttlecockTypeManagerPr
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editBrand, setEditBrand] = useState("")
   const [editName, setEditName] = useState("")
+  const [editDefaultPrice, setEditDefaultPrice] = useState("")
 
   const fetchTypes = async () => {
     setListLoading(true)
@@ -94,6 +95,7 @@ export function ShuttlecockTypeManager({ onTypeAdded }: ShuttlecockTypeManagerPr
       setEditingId(type.id)
       setEditBrand(type.brand)
       setEditName(type.name)
+      setEditDefaultPrice("") // 編輯模式開啟時，讓使用者輸入新的價格，不預帶舊的(因為這是批量更新功能)
   }
 
   const handleUpdate = async () => {
@@ -102,7 +104,12 @@ export function ShuttlecockTypeManager({ onTypeAdded }: ShuttlecockTypeManagerPr
         const res = await fetch('/api/inventory/types', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: editingId, brand: editBrand, name: editName })
+            body: JSON.stringify({ 
+                id: editingId, 
+                brand: editBrand, 
+                name: editName,
+                update_historical_price: editDefaultPrice ? parseInt(editDefaultPrice) : undefined
+            })
         })
         if (res.ok) {
             setEditingId(null)
@@ -236,7 +243,20 @@ export function ShuttlecockTypeManager({ onTypeAdded }: ShuttlecockTypeManagerPr
                                     <Input value={editBrand} onChange={e => setEditBrand(e.target.value)} bs-size="sm" className="h-8 text-xs" placeholder="品牌" />
                                     <Input value={editName} onChange={e => setEditName(e.target.value)} bs-size="sm" className="h-8 text-xs" placeholder="型號" />
                                 </div>
-                                <div className="flex gap-2 justify-end">
+                                <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/10 rounded-lg border border-blue-100 dark:border-blue-900/30">
+                                    <Label className="text-xs font-bold text-blue-700 dark:text-blue-400 mb-1 block">批量更新歷史進貨單價 (慎用)</Label>
+                                    <Input 
+                                        type="number" 
+                                        value={editDefaultPrice} 
+                                        onChange={e => setEditDefaultPrice(e.target.value)} 
+                                        className="h-8 text-xs bg-white dark:bg-slate-900" 
+                                        placeholder="輸入金額以更新所有歷史紀錄" 
+                                    />
+                                    <p className="text-[10px] text-blue-600/80 dark:text-blue-400/70 mt-1">
+                                        * 若輸入並儲存，將會把此球種的所有歷史進貨紀錄單價統一修改為此價格。
+                                    </p>
+                                </div>
+                                <div className="flex gap-2 justify-end mt-2">
                                     <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => setEditingId(null)}>取消</Button>
                                     <Button size="sm" className="h-7 text-[10px] bg-blue-600 hover:bg-blue-700" onClick={handleUpdate} disabled={loading}>儲存</Button>
                                 </div>
@@ -271,6 +291,7 @@ export function ShuttlecockTypeManager({ onTypeAdded }: ShuttlecockTypeManagerPr
                                         </Button>
                                     </div>
                                 </div>
+
                                 <Button 
                                     variant={type.is_active ? "default" : "outline"} 
                                     size="sm"
