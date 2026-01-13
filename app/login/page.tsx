@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Loader2, ShieldCheck, Users } from 'lucide-react'
 import Image from 'next/image'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { logLogin } from '@/app/actions/auth-logging'
 
 export default function LoginPage() {
   const [account, setAccount] = useState('')
@@ -83,6 +84,8 @@ export default function LoginPage() {
           // Inventory Config is deprecated, using restock_records (initial record not strictly needed, or can be added if design requires)
           // await supabase.from('inventory_config').insert(...) 
 
+          // Log Sign Up Success
+          await logLogin(internalEmail)
           
           alert('球團帳號建立成功！現在可以使用該帳號進行登入。')
           setIsSignUp(false)
@@ -102,6 +105,9 @@ export default function LoginPage() {
         } else {
           localStorage.removeItem('remembered_shuttle_account')
         }
+
+        // Log Sign In Success (Non-blocking)
+        logLogin(internalEmail)
 
         router.push('/')
         router.refresh()
