@@ -136,7 +136,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex flex-col p-4">
       {/* Theme Toggle in top right */}
       <div className="fixed top-4 right-4 z-50">
         <ThemeToggle />
@@ -148,7 +148,8 @@ export default function LoginPage() {
         <div className="absolute bottom-[10%] right-[15%] w-[30%] h-[30%] bg-indigo-400/10 blur-[100px] rounded-full" />
       </div>
 
-      <Card className="w-full max-w-md border-border bg-card shadow-xl relative overflow-hidden">
+      <div className="flex-1 flex items-center justify-center">
+        <Card className="w-full max-w-md border-border bg-card shadow-xl relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600" />
         
         <CardHeader className="space-y-2 pt-10 pb-6 text-center">
@@ -265,8 +266,9 @@ export default function LoginPage() {
           Secure Enterprise Authentication
         </div>
       </Card>
+      </div>
 
-      <footer className="mt-8 py-4 text-center text-muted-foreground text-xs">
+      <footer className="py-6 text-center text-muted-foreground text-xs">
         &copy; 2025 動資訊有限公司 MovIT. All rights reserved.
       </footer>
     </div>
