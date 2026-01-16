@@ -210,7 +210,7 @@ export default function Home() {
         <ToastContainer />
 
         <footer className="py-12 text-center text-slate-300 text-sm">
-          &copy; 2025 動資訊有限公司 Active Info Co., Ltd. All rights reserved.
+          &copy; 2025 動資訊有限公司 MovIT. All rights reserved.
         </footer>
       </div>
     </main>

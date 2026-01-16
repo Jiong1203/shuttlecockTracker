@@ -265,6 +265,10 @@ export default function LoginPage() {
           Secure Enterprise Authentication
         </div>
       </Card>
+
+      <footer className="mt-8 py-4 text-center text-muted-foreground text-xs">
+        &copy; 2025 動資訊有限公司 MovIT. All rights reserved.
+      </footer>
     </div>
   )
 }
