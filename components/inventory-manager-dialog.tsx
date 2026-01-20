@@ -78,6 +78,7 @@ export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen
   const [restockPassword, setRestockPassword] = useState("")
   const [hasRestockPassword, setHasRestockPassword] = useState(false)
   const [types, setTypes] = useState<ShuttlecockType[]>([])
+  const [typesLoading, setTypesLoading] = useState(false)
   const [selectedTypeId, setSelectedTypeId] = useState("")
   const [amount, setAmount] = useState("10")
   const [unitPrice, setUnitPrice] = useState("")
@@ -114,13 +115,17 @@ export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen
 
   const fetchTypes = useCallback(async () => {
     try {
+      setTypesLoading(true)
       const res = await fetch('/api/inventory/types?all=true')
       const data = await res.json()
       if (Array.isArray(data)) {
         setTypes(data)
         if (data.length > 0 && !selectedTypeId) setSelectedTypeId(data[0].id)
       }
-    } catch (e) { console.error(e) }
+    } catch (e) { console.error(e) } 
+    finally {
+      setTypesLoading(false)
+    }
   }, [selectedTypeId])
 
   const checkSecurity = useCallback(async () => {
@@ -336,7 +341,7 @@ export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen
 
             {activeTab === 'restock' && (
                 <div className="max-w-md mx-auto py-4">
-                  {loading ? (
+                  {typesLoading ? (
                     <div className="flex justify-center p-8"><Loader2 className="animate-spin text-muted-foreground" /></div>
                   ) : types.length === 0 ? (
                     <div className="flex flex-col items-center justify-center space-y-4 py-8 text-center animate-in fade-in zoom-in-95 duration-300">
