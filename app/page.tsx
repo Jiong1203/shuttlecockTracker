@@ -1,128 +1,60 @@
-'use client'
-
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { createClient } from "@/lib/supabase/server"
+import { redirect } from "next/navigation"
 import { InventoryDisplay } from "@/components/inventory-display"
-import { PickupForm } from "@/components/pickup-form"
-import { SettlementDialog } from "@/components/settlement-dialog"
-import { InventoryManagerDialog } from "@/components/inventory-manager-dialog"
-import { PickupHistory } from "@/components/pickup-history"
-import { createClient } from "@/lib/supabase/client"
-import { useRouter } from "next/navigation"
+import { ClientWrapper } from "./client-wrapper"
 
-
-import { Loader2, LogOut } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { GroupSettingsDialog } from "@/components/group-settings-dialog"
-import { ThemeToggle } from "@/components/theme-toggle"
-import { WelcomeGuide } from "@/components/welcome-guide"
-import { ToastContainer } from "@/components/ui/toast"
-
-interface InventorySummary {
-  shuttlecock_type_id: string;
-  brand: string;
-  name: string;
-  is_active: boolean;
-  total_restocked: number;
-  total_picked: number;
-  current_stock: number;
-}
-
-interface PickupRecord {
-    id: string
-    picker_name: string
-    quantity: number
-    created_at: string
-    shuttlecock_types?: {
-      brand: string
-      name: string
-    }
-}
-
-export default function Home() {
-  const [inventoryManagerOpen, setInventoryManagerOpen] = useState(false)
-  const [inventoryInitialTab, setInventoryInitialTab] = useState<'overview' | 'restock' | 'history' | 'types'>('overview')
-  const [inventory, setInventory] = useState<InventorySummary[] | null>(null)
-  const [records, setRecords] = useState<PickupRecord[]>([])
-  const [loading, setLoading] = useState(true)
-  const [group, setGroup] = useState<{ name: string } | null>(null)
+async function getInventoryData() {
+  const supabase = await createClient()
   
-  const supabase = useMemo(() => createClient(), [])
-  const router = useRouter()
-
-  const fetchData = useCallback(async () => {
-    try {
-      const [invRes, pickRes] = await Promise.all([
-        fetch('/api/inventory?all=true', { cache: 'no-store' }),
-        fetch('/api/pickup', { cache: 'no-store' })
-      ])
-      
-      if (!invRes.ok) {
-        if (invRes.status === 401) return router.push('/login')
-        const errorText = await invRes.text();
-        throw new Error(`Inventory API error: ${invRes.status} ${errorText}`);
-      }
-      if (!pickRes.ok) {
-        const errorText = await pickRes.text();
-        throw new Error(`Pickup API error: ${pickRes.status} ${errorText}`);
-      }
-
-      const invData = await invRes.json()
-      const pickData = await pickRes.json()
-      
-      setInventory(Array.isArray(invData) ? invData : [invData]) 
-      setRecords(pickData)
-    } catch (error) {
-      console.error("Fetch data error:", error)
-      alert(error instanceof Error ? error.message : "資料讀取失敗，請檢查資料庫連線與環境變數設定。")
-    } finally {
-      setLoading(false)
-    }
-  }, [router])
-
-  const fetchUser = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*, groups(*)')
-        .eq('id', user.id)
-        .single()
-      
-      if (profile && profile.groups) {
-        setGroup(profile.groups)
-      } else {
-        setGroup(null)
-      }
-    } else {
-      router.push('/login')
-    }
-  }, [supabase, router])
-
-  useEffect(() => {
-    fetchUser()
-    fetchData()
-  }, [fetchUser, fetchData])
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push('/login')
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    redirect('/login')
   }
 
-  const getTotalCurrentStock = () => {
-      if (!inventory) return 0;
-      return inventory.reduce((acc, item) => acc + (item.current_stock || 0), 0);
+  // 取得使用者的 group_id
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('group_id')
+    .eq('id', user.id)
+    .single()
+
+  if (profileError || !profile?.group_id) {
+    redirect('/login')
   }
 
-  const totalCurrentStock = getTotalCurrentStock();
+  // 並行獲取數據
+  const [inventoryResult, pickupResult, groupResult] = await Promise.all([
+    supabase
+      .from('inventory_summary')
+      .select('*')
+      .eq('group_id', profile.group_id),
+    supabase
+      .from('pickup_records')
+      .select('*, shuttlecock_types(brand, name)')
+      .eq('group_id', profile.group_id)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('profiles')
+      .select('*, groups(*)')
+      .eq('id', user.id)
+      .single()
+  ])
 
-  if (loading) {
-    return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center gap-4 bg-background">
-        <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
-        <p className="text-slate-500 font-medium">資料讀取中...</p>
-      </div>
-    )
+  const inventory = inventoryResult.data || []
+  const records = pickupResult.data || []
+  const group = groupResult.data?.groups || null
+
+  return {
+    inventory: Array.isArray(inventory) ? inventory : [inventory],
+    records,
+    group
   }
+}
+
+export default async function Home() {
+  const { inventory, records, group } = await getInventoryData()
+  
+  const totalCurrentStock = inventory.reduce((acc, item) => acc + (item.current_stock || 0), 0)
 
   return (
     <main className="min-h-screen bg-background p-4 md:p-8">
@@ -137,28 +69,7 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 bg-muted/40 p-1.5 rounded-xl border border-border/50">
-              <ThemeToggle />
-              <GroupSettingsDialog 
-                currentGroupName={group?.name || ""} 
-                onUpdateSuccess={(newName) => {
-                  if (newName) {
-                    setGroup(prev => prev ? { ...prev, name: newName } : null)
-                  }
-                  fetchUser();
-                  fetchData();
-                }} 
-              />
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={handleLogout}
-                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-2 transition-all px-2 md:px-3"
-              >
-                <LogOut className="w-4 h-4" />
-                <span className="hidden md:inline">登出系統</span>
-              </Button>
-            </div>
+            <ClientWrapper variant="header" groupName={group?.name || ""} />
           </div>
 
           {group ? (
@@ -180,34 +91,17 @@ export default function Home() {
         {inventory && (
           <>
             <InventoryDisplay stocks={inventory.filter(i => i.is_active)} />
-            
-            {totalCurrentStock === 0 && (
-              <WelcomeGuide 
-                currentStock={0} 
-                onStartSetup={() => {
-                  setInventoryInitialTab('types')
-                  setInventoryManagerOpen(true)
-                }}
-              />
-            )}
           </>
         )}
 
-        <div className="flex flex-row justify-center items-center gap-3 w-full max-w-2xl mx-auto">
-           <PickupForm onSuccess={fetchData} disabled={totalCurrentStock === 0} />
-           <SettlementDialog records={records} types={inventory || []} />
-           <InventoryManagerDialog 
-              open={inventoryManagerOpen} 
-              onOpenChange={setInventoryManagerOpen}
-              onUpdate={fetchData} 
-              initialTab={inventoryInitialTab}
-           />
-        </div>
-        <div className="w-full max-w-2xl mx-auto">
-           <PickupHistory records={records} onDelete={fetchData} />
-        </div>
-
-        <ToastContainer />
+        <ClientWrapper 
+          variant="content"
+          groupName={group?.name || ""} 
+          inventory={inventory}
+          records={records}
+          totalCurrentStock={totalCurrentStock}
+          currentStock={totalCurrentStock}
+        />
 
         <footer className="py-12 text-center text-slate-300 text-sm">
           &copy; 2025 動資訊有限公司 MovIT. All rights reserved.

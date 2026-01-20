@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
-export const dynamic = "force-dynamic";
+// 允許緩存，但設置較短的 revalidate 時間（30秒）
+export const revalidate = 30;
 
 export async function GET(request: Request) {
   const supabase = await createClient()

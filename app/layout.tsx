@@ -10,16 +10,26 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  display: 'swap',
+  preload: true,
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: 'swap',
+  preload: false, // 只在需要時載入
 });
 
 export const metadata: Metadata = {
   title: "羽球庫存共享小幫手 Shuttlecock Tracker.",
   description: "Shuttlecock Tracker - 羽球庫存共享小幫手",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://shuttlecock-tracker.vercel.app'),
+  openGraph: {
+    title: "羽球庫存共享小幫手",
+    description: "Shuttlecock Tracker - 羽球庫存共享小幫手",
+    type: "website",
+  },
 };
 
 export default function RootLayout({

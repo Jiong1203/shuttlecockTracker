@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { SupabaseClient } from '@supabase/supabase-js'
 
-export const dynamic = "force-dynamic";
+// 允許緩存，但設置較短的 revalidate 時間（30秒）
+export const revalidate = 30;
 
 async function getGroupId(supabase: SupabaseClient) {
   const { data: { user } } = await supabase.auth.getUser()
