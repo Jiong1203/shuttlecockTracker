@@ -19,6 +19,7 @@ export default function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false)
   const [groupName, setGroupName] = useState('')
   const [rememberAccount, setRememberAccount] = useState(false)
+  const [redirecting, setRedirecting] = useState(false)
   const supabase = useMemo(() => createClient(), [])
   const router = useRouter()
 
@@ -109,8 +110,11 @@ export default function LoginPage() {
         // Log Sign In Success (Non-blocking)
         logLogin(internalEmail)
 
+        // 設定導向狀態，提供視覺反饋
+        setRedirecting(true)
+        
+        // 直接導向，不需要 refresh（middleware 會處理認證）
         router.push('/')
-        router.refresh()
       }
     } catch (error: unknown) {
       const err = error as { message?: string }
@@ -237,12 +241,17 @@ export default function LoginPage() {
             <Button 
                 type="submit" 
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-12 rounded-xl transition-all duration-300 shadow-md hover:shadow-lg active:scale-95 disabled:opacity-50"
-                disabled={loading}
+                disabled={loading || redirecting}
             >
-              {loading ? (
+              {redirecting ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  正在進入系統...
+                </>
+              ) : loading ? (
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
               ) : (
-                isSignUp ? '立即註冊' : '登入系統'
+                isSignUp ? '立即註冊' : '登入'
               )}
             </Button>
             
