@@ -11,7 +11,7 @@ import { SettlementDialog } from "@/components/settlement-dialog"
 import { InventoryManagerDialog } from "@/components/inventory-manager-dialog"
 import { PickupHistory } from "@/components/pickup-history"
 import { ToastContainer } from "@/components/ui/toast"
-import { LogOut } from "lucide-react"
+import { LogOut, Loader2 } from "lucide-react"
 
 interface InventorySummary {
   shuttlecock_type_id: string;
@@ -44,12 +44,19 @@ interface HomeInteractiveProps {
 
 export function HomeHeaderControls({ groupName }: { groupName: string }) {
   const [group, setGroup] = useState<{ name: string } | null>(groupName ? { name: groupName } : null)
+  const [loggingOut, setLoggingOut] = useState(false)
   const supabase = createClient()
   const router = useRouter()
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push('/login')
+    setLoggingOut(true)
+    try {
+      await supabase.auth.signOut()
+      router.push('/login')
+    } catch (error) {
+      console.error('Logout error:', error)
+      setLoggingOut(false)
+    }
   }
 
   const refreshData = () => {
@@ -72,10 +79,15 @@ export function HomeHeaderControls({ groupName }: { groupName: string }) {
         variant="ghost" 
         size="sm" 
         onClick={handleLogout}
+        disabled={loggingOut}
         className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-2 transition-all px-2 md:px-3"
       >
-        <LogOut className="w-4 h-4" />
-        <span className="hidden md:inline">登出系統</span>
+        {loggingOut ? (
+          <Loader2 className="w-4 h-4 animate-spin" />
+        ) : (
+          <LogOut className="w-4 h-4" />
+        )}
+        <span className="hidden md:inline">{loggingOut ? '登出中...' : '登出系統'}</span>
       </Button>
     </div>
   )

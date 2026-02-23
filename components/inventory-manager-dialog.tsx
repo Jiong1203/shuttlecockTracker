@@ -23,6 +23,7 @@ import {
   Settings2
 } from "lucide-react"
 import { ShuttlecockTypeManager } from "./shuttlecock-type-manager"
+import { showToast } from "@/components/ui/toast"
 
 interface InventoryManagerDialogProps {
   // We can pass initial data if we want, but fetching fresh inside might be safer for consistency
@@ -145,10 +146,11 @@ export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen
   }, [lastVerifiedAt, VERIFICATION_TIMEOUT])
 
   const handleTypeChange = useCallback(() => {
+    // 只更新對話框內部的資料，不觸發外部更新
     fetchTypes()
     fetchInventory()
-    onUpdate?.()
-  }, [fetchTypes, fetchInventory, onUpdate])
+    // 移除 onUpdate?.() 呼叫，避免關閉對話框
+  }, [fetchTypes, fetchInventory])
 
   // Effect to load data when tab changes or dialog opens
   useEffect(() => {
@@ -221,15 +223,17 @@ export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen
         })
         const data = await res.json()
         if (res.ok) {
-            // Success
-            onUpdate?.() // trigger parent refresh
-            setStep(1)
+            // Success - 更新內部資料但保持對話框開啟
+            const typeName = types.find(t => t.id === selectedTypeId)
+            showToast(`已入庫 ${amount} 桶 ${typeName?.brand || ''} ${typeName?.name || ''}`, 'success')
+            setStep(2) // 返回步驟 2 方便繼續入庫
             setAmount("10")
             setUnitPrice("")
-            // Keep Password in state if it was verified, but consider updating lastVerifiedAt
             setLastVerifiedAt(Date.now()) 
-            setActiveTab('overview') // Switch back to overview to show update
-            fetchInventory() 
+            // 更新對話框內部資料
+            fetchInventory()
+            fetchHistory()
+            // 不呼叫 onUpdate?.()，避免關閉對話框
         } else {
             setError(data.error)
             if (res.status === 401) {
@@ -247,6 +251,9 @@ export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open)
     if (!open) {
+        // 關閉時才更新首頁資料
+        onUpdate?.()
+        
         // When closing:
         // 1. If not verified (step 1), clear sensitive password
         if (step === 1) {

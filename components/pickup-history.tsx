@@ -39,10 +39,12 @@ interface PickupHistoryProps {
 export function PickupHistory({ records, onDelete }: PickupHistoryProps) {
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [deletingInListId, setDeletingInListId] = useState<string | null>(null)
 
   const handleDelete = async () => {
     if (!deleteId) return
     setLoading(true)
+    setDeletingInListId(deleteId)
     try {
       const response = await fetch(`/api/pickup?id=${deleteId}`, {
         method: 'DELETE',
@@ -58,6 +60,7 @@ export function PickupHistory({ records, onDelete }: PickupHistoryProps) {
       alert("連線發生錯誤")
     } finally {
       setLoading(false)
+      setTimeout(() => setDeletingInListId(null), 300) // 延遲清除，確保動畫完成
     }
   }
 
@@ -103,8 +106,13 @@ export function PickupHistory({ records, onDelete }: PickupHistoryProps) {
                       size="icon"
                       className="text-slate-300 dark:text-slate-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20"
                       onClick={() => setDeleteId(record.id)}
+                      disabled={deletingInListId === record.id}
                     >
-                      <Trash2 size={16} />
+                      {deletingInListId === record.id ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <Trash2 size={16} />
+                      )}
                     </Button>
                   </TableCell>
                 </TableRow>

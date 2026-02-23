@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Calculator, Calendar, User, Package } from "lucide-react"
+import { Calculator, Calendar, User, Package, Loader2 } from "lucide-react"
 
 interface UsedBatch {
     price: number
@@ -157,7 +157,14 @@ export function SettlementDialog({ records, types = [] }: SettlementDialogProps)
           </div>
 
           <Button onClick={handleCalculate} disabled={loading} className="w-full h-12 text-lg font-bold">
-              {loading ? "計算中..." : "開始計算"}
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                  計算中...
+                </>
+              ) : (
+                "開始計算"
+              )}
           </Button>
 
           <hr className="border-border" />

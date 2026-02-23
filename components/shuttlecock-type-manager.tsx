@@ -4,7 +4,8 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Plus, X, Pencil } from "lucide-react"
+import { Plus, X, Pencil, Loader2 } from "lucide-react"
+import { showToast } from "@/components/ui/toast"
 
 interface ShuttlecockType {
   id: string
@@ -26,6 +27,8 @@ export function ShuttlecockTypeManager({ onTypeAdded }: ShuttlecockTypeManagerPr
   const [loading, setLoading] = useState(false)
   const [types, setTypes] = useState<ShuttlecockType[]>([])
   const [listLoading, setListLoading] = useState(false)
+  const [togglingId, setTogglingId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   // 編輯相關狀態
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -65,17 +68,20 @@ export function ShuttlecockTypeManager({ onTypeAdded }: ShuttlecockTypeManagerPr
       setBrand("")
       setName("")
       setIsAdding(false)
-      fetchTypes()
-      if (onTypeAdded) onUpdateAll()
+      await fetchTypes()
+      showToast(`已新增球種：${brand} ${name}`, 'success')
+      // 通知父層有變更（但不觸發整頁重新整理）
+      if (onTypeAdded) onTypeAdded()
     } catch (error) {
       console.error(error)
-      alert("新增失敗")
+      showToast("新增球種失敗", 'error')
     } finally {
       setLoading(false)
     }
   }
 
   const handleToggleActive = async (id: string, currentActive: boolean) => {
+    setTogglingId(id)
     try {
       const res = await fetch('/api/inventory/types', {
         method: 'PATCH',
@@ -83,11 +89,17 @@ export function ShuttlecockTypeManager({ onTypeAdded }: ShuttlecockTypeManagerPr
         body: JSON.stringify({ id, is_active: !currentActive })
       })
       if (res.ok) {
-        fetchTypes()
-        onUpdateAll()
+        await fetchTypes()
+        const newStatus = !currentActive ? '顯示' : '隱藏'
+        showToast(`已${newStatus}球種`, 'success')
+        // 通知父層有變更（但不觸發整頁重新整理）
+        if (onTypeAdded) onTypeAdded()
       }
     } catch (error) {
       console.error(error)
+      showToast("操作失敗", 'error')
+    } finally {
+      setTogglingId(null)
     }
   }
 
@@ -113,14 +125,17 @@ export function ShuttlecockTypeManager({ onTypeAdded }: ShuttlecockTypeManagerPr
         })
         if (res.ok) {
             setEditingId(null)
-            fetchTypes()
-            onUpdateAll()
+            await fetchTypes()
+            showToast(`已更新球種：${editBrand} ${editName}`, 'success')
+            // 通知父層有變更（但不觸發整頁重新整理）
+            if (onTypeAdded) onTypeAdded()
         } else {
             const data = await res.json()
-            alert(data.error || "更新失敗")
+            showToast(data.error || "更新失敗", 'error')
         }
     } catch (error) {
         console.error(error)
+        showToast("更新失敗", 'error')
     } finally {
         setLoading(false)
     }
@@ -128,34 +143,34 @@ export function ShuttlecockTypeManager({ onTypeAdded }: ShuttlecockTypeManagerPr
 
   const handleDelete = async (type: ShuttlecockType) => {
       if (type.has_records) {
-          alert(`「${type.brand} ${type.name}」已有消耗紀錄，為了資產完整性無法刪除。\n若不再使用，請點擊「隱藏」即可。`)
+          showToast(`「${type.brand} ${type.name}」已有消耗紀錄，無法刪除。若不再使用，請點擊「隱藏」`, 'warning', 5000)
           return
       }
 
       if (!confirm(`確定要永久刪除「${type.brand} ${type.name}」嗎？`)) return
 
-      setLoading(true)
+      setDeletingId(type.id)
       try {
           const res = await fetch(`/api/inventory/types?id=${type.id}`, {
               method: 'DELETE'
           })
           if (res.ok) {
-              fetchTypes()
-              onUpdateAll()
+              await fetchTypes()
+              showToast(`已刪除球種：${type.brand} ${type.name}`, 'success')
+              // 通知父層有變更（但不觸發整頁重新整理）
+              if (onTypeAdded) onTypeAdded()
           } else {
               const data = await res.json()
-              alert(data.error || "刪除失敗")
+              showToast(data.error || "刪除失敗", 'error')
           }
       } catch (error) {
           console.error(error)
+          showToast("刪除失敗", 'error')
       } finally {
-          setLoading(false)
+          setDeletingId(null)
       }
   }
 
-  const onUpdateAll = () => {
-      if (onTypeAdded) onTypeAdded()
-  }
 
   return (
     <div className="space-y-6">
@@ -222,7 +237,14 @@ export function ShuttlecockTypeManager({ onTypeAdded }: ShuttlecockTypeManagerPr
                             取消
                         </Button>
                         <Button type="submit" className="flex-[2] h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-lg shadow-emerald-500/20" disabled={loading}>
-                            {loading ? "處理中..." : "確認並新增球種"}
+                            {loading ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                    處理中...
+                                </>
+                            ) : (
+                                "確認並新增球種"
+                            )}
                         </Button>
                     </div>
                 </form>
@@ -257,8 +279,17 @@ export function ShuttlecockTypeManager({ onTypeAdded }: ShuttlecockTypeManagerPr
                                     </p>
                                 </div>
                                 <div className="flex gap-2 justify-end mt-2">
-                                    <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => setEditingId(null)}>取消</Button>
-                                    <Button size="sm" className="h-7 text-[10px] bg-blue-600 hover:bg-blue-700" onClick={handleUpdate} disabled={loading}>儲存</Button>
+                                    <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => setEditingId(null)} disabled={loading}>取消</Button>
+                                    <Button size="sm" className="h-7 text-[10px] bg-blue-600 hover:bg-blue-700" onClick={handleUpdate} disabled={loading}>
+                                        {loading ? (
+                                            <>
+                                                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                                儲存中
+                                            </>
+                                        ) : (
+                                            "儲存"
+                                        )}
+                                    </Button>
                                 </div>
                             </div>
                         ) : (
@@ -275,6 +306,7 @@ export function ShuttlecockTypeManager({ onTypeAdded }: ShuttlecockTypeManagerPr
                                                 size="icon" 
                                                 className="h-7 w-7 text-orange-500 hover:bg-orange-50"
                                                 onClick={() => handleStartEdit(type)}
+                                                disabled={loading || togglingId === type.id || deletingId === type.id}
                                             >
                                                 <Pencil className="h-3 w-3" />
                                                 <span className="sr-only">編輯</span>
@@ -285,8 +317,13 @@ export function ShuttlecockTypeManager({ onTypeAdded }: ShuttlecockTypeManagerPr
                                             size="icon" 
                                             className={`h-7 w-7 ${type.has_records ? 'text-slate-200 cursor-not-allowed' : 'text-rose-400 hover:bg-rose-50'}`}
                                             onClick={() => handleDelete(type)}
+                                            disabled={type.has_records || deletingId === type.id || togglingId === type.id}
                                         >
-                                            <X className="h-3 w-3" />
+                                            {deletingId === type.id ? (
+                                                <Loader2 className="h-3 w-3 animate-spin" />
+                                            ) : (
+                                                <X className="h-3 w-3" />
+                                            )}
                                             <span className="sr-only">刪除</span>
                                         </Button>
                                     </div>
@@ -297,8 +334,16 @@ export function ShuttlecockTypeManager({ onTypeAdded }: ShuttlecockTypeManagerPr
                                     size="sm"
                                     className={`w-full h-8 px-4 text-xs font-bold transition-all shadow-sm ${type.is_active ? 'bg-emerald-600 hover:bg-emerald-700' : 'text-slate-400 opacity-60 hover:opacity-100'}`}
                                     onClick={() => handleToggleActive(type.id, type.is_active)}
+                                    disabled={togglingId === type.id || deletingId === type.id}
                                 >
-                                    {type.is_active ? "首頁：顯示中" : "首頁：已隱藏"}
+                                    {togglingId === type.id ? (
+                                        <>
+                                            <Loader2 className="h-3 w-3 animate-spin mr-2" />
+                                            處理中...
+                                        </>
+                                    ) : (
+                                        type.is_active ? "首頁：顯示中" : "首頁：已隱藏"
+                                    )}
                                 </Button>
                             </>
                         )}
