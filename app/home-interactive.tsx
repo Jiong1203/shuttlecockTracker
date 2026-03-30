@@ -12,6 +12,7 @@ import { InventoryManagerDialog } from "@/components/inventory-manager-dialog"
 import { PickupHistory } from "@/components/pickup-history"
 import { ToastContainer } from "@/components/ui/toast"
 import { LogOut, Loader2 } from "lucide-react"
+import { UserManualDialog } from "@/components/user-manual-dialog"
 
 interface InventorySummary {
   shuttlecock_type_id: string;
@@ -67,8 +68,9 @@ export function HomeHeaderControls({ groupName }: { groupName: string }) {
 
   return (
     <div className="flex items-center gap-2 bg-muted/40 p-1.5 rounded-xl border border-border/50">
+      <UserManualDialog />
       <ThemeToggle />
-      <GroupSettingsDialog 
+      <GroupSettingsDialog
         currentGroupName={group?.name || ""} 
         onUpdateSuccess={(newName) => {
           if (newName) {
