@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { hashPin, verifyPin } from '@/lib/crypto'
 
 export const dynamic = "force-dynamic";
 
@@ -88,14 +89,13 @@ export async function PATCH(request: Request) {
     if (contactEmail !== undefined) updates.contact_email = contactEmail
     
     if (restockPassword !== undefined || currentRestockPassword !== undefined) {
-      // 驗證原密碼
-      const effectiveOldPassword = group.restock_password || '1111'
-      if (currentRestockPassword !== effectiveOldPassword) {
+      const isValid = await verifyPin(currentRestockPassword, group.restock_password)
+      if (!isValid) {
         return NextResponse.json({ error: '入庫密碼驗證失敗' }, { status: 401 })
       }
-      
+
       if (restockPassword !== undefined) {
-        updates.restock_password = restockPassword === "" ? null : restockPassword
+        updates.restock_password = restockPassword === "" ? null : await hashPin(restockPassword)
       }
     }
 
@@ -163,26 +163,21 @@ export async function DELETE(request: Request) {
 
     // --- 開始執行連鎖刪除 (使用 AdminClient 確保能清理所有內容) ---
 
-    // 1. 刪除相關業務資料 (因 RLS 可能限制 DELETE，使用 adminClient)
+    // 1. 先移除 Auth User：若此步驟失敗則中止，業務資料保持完整
+    const { error: authDeleteError } = await adminClient.auth.admin.deleteUser(user.id)
+    if (authDeleteError) {
+      console.error("Auth delete error:", authDeleteError)
+      return NextResponse.json({ error: '帳號刪除失敗，請稍後再試' }, { status: 500 })
+    }
+
+    // 2. Auth 已刪除，清理業務資料（使用者已無法登入）
     await adminClient.from('pickup_records').delete().eq('group_id', profile.group_id)
     await adminClient.from('restock_records').delete().eq('group_id', profile.group_id)
     await adminClient.from('shuttlecock_types').delete().eq('group_id', profile.group_id)
-
-    
-    // 2. 刪除 Profiles 與 Groups
     await adminClient.from('profiles').delete().eq('group_id', profile.group_id)
-    const { error: groupDeleteError } = await adminClient.from('groups').delete().eq('id', profile.group_id)
-    
-    if (groupDeleteError) throw groupDeleteError
+    await adminClient.from('groups').delete().eq('id', profile.group_id)
 
-    // 3. 核心動作：移除 Auth User
-    const { error: authDeleteError } = await adminClient.auth.admin.deleteUser(user.id)
-    if (authDeleteError) {
-        console.error("Auth delete error:", authDeleteError)
-        // 即使 Auth 刪除失敗 (可能是連線問題)，資料已清空，紀錄日誌後繼續
-    }
-
-    // 4. 清除 Session Cookie
+    // 3. 清除 Session Cookie
     const response = NextResponse.json({ message: '帳號與資料已永久移除' })
     response.cookies.delete('sb-access-token')
     response.cookies.delete('sb-refresh-token')

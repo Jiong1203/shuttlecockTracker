@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getGroupId } from '@/lib/supabase/helpers'
+import { verifyPin } from '@/lib/crypto'
 
 export const dynamic = "force-dynamic";
 
@@ -31,9 +32,8 @@ export async function POST(request: Request) {
     
     if (groupError) throw groupError
 
-    const effectivePassword = group.restock_password || '1111'
-
-    if (effectivePassword !== password) {
+    const isValid = await verifyPin(password, group.restock_password)
+    if (!isValid) {
       return NextResponse.json({ error: '入庫管理密碼錯誤' }, { status: 401 })
     }
 

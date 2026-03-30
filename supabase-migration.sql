@@ -277,3 +277,47 @@ LEFT JOIN pickup_stats ps ON st.id = ps.shuttlecock_type_id;
 
 -- 2. 確保 view 安全性設為 invoker
 ALTER VIEW public.inventory_summary SET (security_invoker = on);
+
+-- ==========================================
+-- Migration: 2026-03-30 insert_pickup_record RPC (TOCTOU fix)
+-- 需在 Supabase SQL Editor 執行此段
+-- ==========================================
+
+CREATE OR REPLACE FUNCTION public.insert_pickup_record(
+    p_picker_name TEXT,
+    p_quantity    INTEGER,
+    p_group_id    UUID,
+    p_type_id     UUID
+)
+RETURNS SETOF public.pickup_records
+LANGUAGE plpgsql
+SECURITY INVOKER
+AS $$
+DECLARE
+    v_current_stock INTEGER;
+BEGIN
+    -- 鎖定球種列，讓並發請求排隊，防止超額領取
+    PERFORM id FROM public.shuttlecock_types
+    WHERE id = p_type_id AND group_id = p_group_id
+    FOR UPDATE;
+
+    -- 鎖定後重新計算庫存
+    SELECT
+        COALESCE((SELECT SUM(quantity) FROM public.restock_records
+                  WHERE shuttlecock_type_id = p_type_id AND group_id = p_group_id), 0) -
+        COALESCE((SELECT SUM(quantity) FROM public.pickup_records
+                  WHERE shuttlecock_type_id = p_type_id AND group_id = p_group_id), 0)
+    INTO v_current_stock;
+
+    IF p_quantity > v_current_stock THEN
+        RAISE EXCEPTION '庫存不足，目前僅剩 % 桶', v_current_stock;
+    END IF;
+
+    RETURN QUERY
+    INSERT INTO public.pickup_records (picker_name, quantity, group_id, shuttlecock_type_id)
+    VALUES (p_picker_name, p_quantity, p_group_id, p_type_id)
+    RETURNING *;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.insert_pickup_record TO authenticated;

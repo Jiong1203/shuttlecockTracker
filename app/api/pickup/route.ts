@@ -41,42 +41,27 @@ export async function POST(request: Request) {
     const { picker_name, quantity, type_id } = await request.json()
 
     if (!picker_name || !quantity) {
-      return NextResponse.json({ error: 'Missing name or quantity' }, { status: 400 })
+      return NextResponse.json({ error: '缺少姓名或數量' }, { status: 400 })
     }
-    
+
     if (!type_id) {
-       return NextResponse.json({ error: 'Missing type_id' }, { status: 400 })
+      return NextResponse.json({ error: '缺少球種' }, { status: 400 })
     }
 
-    // Check current stock
-    const { data: stockData } = await supabase
-      .from('inventory_summary')
-      .select('current_stock')
-      .eq('group_id', groupId)
-      .eq('shuttlecock_type_id', type_id)
-      .single()
-
-    const currentStock = stockData?.current_stock || 0
-    if (quantity > currentStock) {
-        return NextResponse.json({ error: `庫存不足，目前僅剩 ${currentStock} 桶` }, { status: 400 })
-    }
-
-    const { data, error } = await supabase
-      .from('pickup_records')
-      .insert([{ 
-        picker_name, 
-        quantity, 
-        group_id: groupId, 
-        shuttlecock_type_id: type_id 
-      }])
-      .select()
-      .single()
+    // 透過 DB function 原子性執行庫存檢查 + 插入，防止並發競爭
+    const { data, error } = await supabase.rpc('insert_pickup_record', {
+      p_picker_name: picker_name,
+      p_quantity: quantity,
+      p_group_id: groupId,
+      p_type_id: type_id,
+    })
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      const status = error.message.includes('庫存不足') ? 400 : 500
+      return NextResponse.json({ error: error.message }, { status })
     }
 
-    return NextResponse.json(data)
+    return NextResponse.json(data[0])
   } catch {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
