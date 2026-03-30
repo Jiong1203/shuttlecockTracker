@@ -19,6 +19,7 @@ export async function GET() {
       .select('*, shuttlecock_types(brand, name)')
       .eq('group_id', groupId)
       .order('created_at', { ascending: false })
+      .limit(100)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })

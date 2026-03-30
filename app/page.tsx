@@ -32,7 +32,8 @@ async function getInventoryData() {
       .from('pickup_records')
       .select('*, shuttlecock_types(brand, name)')
       .eq('group_id', profile.group_id)
-      .order('created_at', { ascending: false }),
+      .order('created_at', { ascending: false })
+      .limit(100),
     supabase
       .from('profiles')
       .select('*, groups(*)')

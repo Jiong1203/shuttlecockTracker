@@ -101,6 +101,7 @@ This project uses a **single cumulative SQL file** (`supabase-migration.sql`) in
 | (phase 2)  | shuttlecock_types, restock_records, inventory_summary view |
 | (phase 3)  | is_active column on shuttlecock_types            |
 | 2026-03-30 | `insert_pickup_record` RPC function (TOCTOU fix) |
+| 2026-03-30 | 效能索引：pickup/restock/shuttlecock_types 常用查詢欄位 |
 
 ## Environment Variables
 

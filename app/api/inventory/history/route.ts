@@ -1,29 +1,20 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { getGroupId } from '@/lib/supabase/helpers'
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   const supabase = await createClient()
-  
+
   try {
     const { searchParams } = new URL(request.url)
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
+    const groupId = await getGroupId(supabase)
+    if (!groupId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('group_id')
-      .eq('id', user.id)
-      .single()
-
-    if (profileError || !profile?.group_id) {
-      return NextResponse.json({ error: 'Group not found' }, { status: 404 })
     }
 
     let query = supabase
@@ -35,8 +26,9 @@ export async function GET(request: Request) {
           name
         )
       `)
-      .eq('group_id', profile.group_id)
+      .eq('group_id', groupId)
       .order('created_at', { ascending: false })
+      .limit(500)
 
     if (startDate) {
       query = query.gte('created_at', startDate)
@@ -64,8 +56,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(formattedData)
     
-  } catch (error) {
-    console.error('Error fetching inventory history:', error)
+  } catch {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }

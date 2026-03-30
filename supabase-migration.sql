@@ -321,3 +321,28 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.insert_pickup_record TO authenticated;
+
+-- ==========================================
+-- Migration: 2026-03-30 效能索引
+-- 需在 Supabase SQL Editor 執行此段
+-- ==========================================
+
+-- pickup_records：最常見的查詢模式是 group_id + 依時間排序
+CREATE INDEX IF NOT EXISTS idx_pickup_records_group_created
+  ON public.pickup_records (group_id, created_at DESC);
+
+-- restock_records：settlement FIFO 需依 group_id + 時間升冪掃描
+CREATE INDEX IF NOT EXISTS idx_restock_records_group_created
+  ON public.restock_records (group_id, created_at ASC);
+
+-- shuttlecock_types：依 group_id 篩選球種
+CREATE INDEX IF NOT EXISTS idx_shuttlecock_types_group
+  ON public.shuttlecock_types (group_id);
+
+-- pickup_records：settlement FIFO 也會依 shuttlecock_type_id + group_id 篩選
+CREATE INDEX IF NOT EXISTS idx_pickup_records_type_group
+  ON public.pickup_records (shuttlecock_type_id, group_id);
+
+-- restock_records：同上
+CREATE INDEX IF NOT EXISTS idx_restock_records_type_group
+  ON public.restock_records (shuttlecock_type_id, group_id);

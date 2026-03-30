@@ -62,7 +62,7 @@ export function HomeHeaderControls({ groupName }: { groupName: string }) {
   }
 
   const refreshData = () => {
-    window.location.reload()
+    router.refresh()
   }
 
   return (
@@ -104,14 +104,13 @@ export default function HomeInteractive({
   inventoryManagerOpen: controlledOpen,
   onInventoryManagerOpenChange
 }: HomeInteractiveProps) {
+  const router = useRouter()
   const [localOpen, setLocalOpen] = useState(false)
   const inventoryManagerOpen = controlledOpen ?? localOpen
   const setInventoryManagerOpen = onInventoryManagerOpenChange ?? setLocalOpen
-  const [currentInventory] = useState<InventorySummary[]>(inventory)
-  const [currentRecords] = useState<PickupRecord[]>(records)
 
   const refreshData = () => {
-    window.location.reload()
+    router.refresh()
   }
 
   if (variant === 'header') {
@@ -122,16 +121,16 @@ export default function HomeInteractive({
     <>
       <div className="flex flex-row justify-center items-center gap-3 w-full max-w-2xl mx-auto">
         <PickupForm onSuccess={refreshData} disabled={totalCurrentStock === 0} />
-        <SettlementDialog records={currentRecords} types={currentInventory || []} />
-        <InventoryManagerDialog 
-          open={inventoryManagerOpen} 
+        <SettlementDialog records={records} types={inventory} />
+        <InventoryManagerDialog
+          open={inventoryManagerOpen}
           onOpenChange={setInventoryManagerOpen}
-          onUpdate={refreshData} 
+          onUpdate={refreshData}
           initialTab="overview"
         />
       </div>
       <div className="w-full max-w-2xl mx-auto">
-        <PickupHistory records={currentRecords} onDelete={refreshData} />
+        <PickupHistory records={records} onDelete={refreshData} />
       </div>
       <ToastContainer />
     </>
