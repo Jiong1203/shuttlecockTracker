@@ -1,21 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { SupabaseClient } from '@supabase/supabase-js'
+import { getGroupId } from '@/lib/supabase/helpers'
 
 export const dynamic = "force-dynamic";
-
-async function getGroupId(supabase: SupabaseClient) {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('group_id')
-    .eq('id', user.id)
-    .single()
-  
-  return profile?.group_id
-}
 
 interface RestockBatch {
     id: string;
@@ -115,10 +102,7 @@ export async function POST(request: Request) {
                 const batchIndex = typeRestocks.findIndex((b: RestockBatch) => b.remaining > 0);
                 
                 if (batchIndex === -1) {
-                    // 庫存不足，假設成本為 0 或最後一批價格? 這裡暫且當作 0 並記錄異常，或是使用最後已知價格
-                    // 簡單處理: 視為 0 成本 (或是系統預設異常)
                     console.warn(`Type ${typeId} inventory depleted!`);
-                    quantityToPick = 0; 
                     break;
                 }
 
@@ -146,7 +130,7 @@ export async function POST(request: Request) {
 
             if (isWithinPeriod) {
                 typeTotalCost += currentPickupCost;
-                typeUsageCount += pickup.quantity; // 注意：這裡若是庫存不足其實沒扣到，但邏輯上算消耗量
+                typeUsageCount += (pickup.quantity - quantityToPick);
             }
         }
 

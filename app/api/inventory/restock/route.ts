@@ -1,21 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { SupabaseClient } from '@supabase/supabase-js'
+import { getGroupId } from '@/lib/supabase/helpers'
 
 export const dynamic = "force-dynamic";
-
-async function getGroupId(supabase: SupabaseClient) {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('group_id')
-    .eq('id', user.id)
-    .single()
-  
-  return profile?.group_id
-}
 
 export async function POST(request: Request) {
   const supabase = await createClient()

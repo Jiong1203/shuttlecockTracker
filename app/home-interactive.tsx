@@ -40,6 +40,8 @@ interface HomeInteractiveProps {
   records?: PickupRecord[]
   totalCurrentStock?: number
   variant?: 'header' | 'content'
+  inventoryManagerOpen?: boolean
+  onInventoryManagerOpenChange?: (open: boolean) => void
 }
 
 export function HomeHeaderControls({ groupName }: { groupName: string }) {
@@ -93,14 +95,18 @@ export function HomeHeaderControls({ groupName }: { groupName: string }) {
   )
 }
 
-export default function HomeInteractive({ 
-  groupName = "", 
-  inventory = [], 
+export default function HomeInteractive({
+  groupName = "",
+  inventory = [],
   records = [],
   totalCurrentStock = 0,
-  variant = 'content'
+  variant = 'content',
+  inventoryManagerOpen: controlledOpen,
+  onInventoryManagerOpenChange
 }: HomeInteractiveProps) {
-  const [inventoryManagerOpen, setInventoryManagerOpen] = useState(false)
+  const [localOpen, setLocalOpen] = useState(false)
+  const inventoryManagerOpen = controlledOpen ?? localOpen
+  const setInventoryManagerOpen = onInventoryManagerOpenChange ?? setLocalOpen
   const [currentInventory] = useState<InventorySummary[]>(inventory)
   const [currentRecords] = useState<PickupRecord[]>(records)
 

@@ -94,17 +94,16 @@ export default async function Home() {
           </>
         )}
 
-        <ClientWrapper 
+        <ClientWrapper
           variant="content"
-          groupName={group?.name || ""} 
+          groupName={group?.name || ""}
           inventory={inventory}
           records={records}
           totalCurrentStock={totalCurrentStock}
-          currentStock={totalCurrentStock}
         />
 
         <footer className="py-12 text-center text-slate-300 text-sm">
-          &copy; 2025 動資訊有限公司 MovIT. All rights reserved.
+          &copy; 2026 動資訊有限公司 MovIT. All rights reserved.
         </footer>
       </div>
     </main>

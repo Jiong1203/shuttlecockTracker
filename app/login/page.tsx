@@ -11,6 +11,7 @@ import { Loader2, ShieldCheck, Users } from 'lucide-react'
 import Image from 'next/image'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { logLogin } from '@/app/actions/auth-logging'
+import { showToast, ToastContainer } from '@/components/ui/toast'
 
 export default function LoginPage() {
   const [account, setAccount] = useState('')
@@ -41,7 +42,7 @@ export default function LoginPage() {
 
     // 前端預先檢查密碼長度，提供更及時的中文提示
     if (password.length < 6) {
-      alert('密碼長度至少需要 6 個字元')
+      showToast('密碼長度至少需要 6 個字元', 'error')
       setLoading(false)
       return
     }
@@ -88,7 +89,7 @@ export default function LoginPage() {
           // Log Sign Up Success
           await logLogin(internalEmail)
           
-          alert('球團帳號建立成功！現在可以使用該帳號進行登入。')
+          showToast('球團帳號建立成功！現在可以使用該帳號進行登入。', 'success')
           setIsSignUp(false)
         }
       } else {
@@ -133,7 +134,7 @@ export default function LoginPage() {
         message = '帳號格式不正確'
       }
 
-      alert(message)
+      showToast(message, 'error')
     } finally {
       setLoading(false)
     }
@@ -278,8 +279,9 @@ export default function LoginPage() {
       </div>
 
       <footer className="py-6 text-center text-muted-foreground text-xs">
-        &copy; 2025 動資訊有限公司 MovIT. All rights reserved.
+        &copy; 2026 動資訊有限公司 MovIT. All rights reserved.
       </footer>
+      <ToastContainer />
     </div>
   )
 }

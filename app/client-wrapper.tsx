@@ -1,7 +1,7 @@
 'use client'
 
 import dynamic from "next/dynamic"
-import { Suspense } from "react"
+import { Suspense, useState } from "react"
 
 // 在 Client Component 中進行動態導入，這樣可以使用 ssr: false
 const HomeInteractive = dynamic(() => import("./home-interactive"), {
@@ -44,22 +44,16 @@ interface ClientWrapperProps {
   inventory?: InventorySummary[]
   records?: PickupRecord[]
   totalCurrentStock?: number
-  currentStock?: number
 }
 
-export function ClientWrapper({ 
-  variant, 
-  groupName = "", 
-  inventory = [], 
+export function ClientWrapper({
+  variant,
+  groupName = "",
+  inventory = [],
   records = [],
-  totalCurrentStock = 0,
-  currentStock = 0
+  totalCurrentStock = 0
 }: ClientWrapperProps) {
-  // 在客戶端定義處理函數
-  const handleStartSetup = () => {
-    // 這個邏輯會在客戶端處理，可以打開庫存管理對話框等
-    // 由於 WelcomeGuide 是客戶端組件，它會自己處理交互
-  }
+  const [inventoryManagerOpen, setInventoryManagerOpen] = useState(false)
 
   if (variant === 'header') {
     return (
@@ -72,11 +66,11 @@ export function ClientWrapper({
   if (variant === 'content') {
     return (
       <>
-        {currentStock === 0 && (
+        {totalCurrentStock === 0 && (
           <Suspense fallback={null}>
-            <WelcomeGuide 
-              currentStock={0} 
-              onStartSetup={handleStartSetup}
+            <WelcomeGuide
+              currentStock={0}
+              onStartSetup={() => setInventoryManagerOpen(true)}
             />
           </Suspense>
         )}
@@ -90,12 +84,14 @@ export function ClientWrapper({
             <div className="w-full max-w-2xl mx-auto h-64 bg-muted animate-pulse rounded-xl" />
           </div>
         }>
-          <HomeInteractive 
-            groupName={groupName} 
+          <HomeInteractive
+            groupName={groupName}
             inventory={inventory}
             records={records}
             totalCurrentStock={totalCurrentStock}
             variant="content"
+            inventoryManagerOpen={inventoryManagerOpen}
+            onInventoryManagerOpenChange={setInventoryManagerOpen}
           />
         </Suspense>
       </>
