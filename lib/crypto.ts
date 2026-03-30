@@ -2,7 +2,7 @@ const ITERATIONS = 100_000
 const KEY_LENGTH = 256
 
 export async function hashPin(pin: string): Promise<string> {
-  const salt = crypto.getRandomValues(new Uint8Array(16))
+  const salt = crypto.getRandomValues(new Uint8Array(new ArrayBuffer(16)))
   const saltHex = toHex(salt)
   const hashHex = await pbkdf2(pin, salt)
   return `pbkdf2:${saltHex}:${hashHex}`
@@ -29,7 +29,7 @@ export async function verifyPin(pin: string, stored: string | null, defaultPin =
   return pin === stored
 }
 
-async function pbkdf2(password: string, salt: Uint8Array): Promise<string> {
+async function pbkdf2(password: string, salt: Uint8Array<ArrayBuffer>): Promise<string> {
   const key = await crypto.subtle.importKey(
     'raw',
     new TextEncoder().encode(password),
@@ -49,8 +49,8 @@ function toHex(bytes: Uint8Array): string {
   return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
-function fromHex(hex: string): Uint8Array {
-  const bytes = new Uint8Array(hex.length / 2)
+function fromHex(hex: string): Uint8Array<ArrayBuffer> {
+  const bytes = new Uint8Array(new ArrayBuffer(hex.length / 2))
   for (let i = 0; i < hex.length; i += 2) {
     bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16)
   }
