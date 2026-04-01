@@ -13,6 +13,7 @@ import { PickupHistory } from "@/components/pickup-history"
 import { ToastContainer } from "@/components/ui/toast"
 import { LogOut, Loader2 } from "lucide-react"
 import { UserManualDialog } from "@/components/user-manual-dialog"
+import { EventTrackerDialog } from "@/components/event-tracker-dialog"
 
 interface InventorySummary {
   shuttlecock_type_id: string;
@@ -69,6 +70,7 @@ export function HomeHeaderControls({ groupName }: { groupName: string }) {
   return (
     <div className="flex items-center gap-2 bg-muted/40 p-1.5 rounded-xl border border-border/50">
       <UserManualDialog />
+      <EventTrackerDialog />
       <ThemeToggle />
       <GroupSettingsDialog
         currentGroupName={group?.name || ""} 
