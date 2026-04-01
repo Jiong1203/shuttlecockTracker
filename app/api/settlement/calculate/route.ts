@@ -94,7 +94,7 @@ export async function POST(request: Request) {
             
             // 判斷該領取是否在查詢區間內，且符合姓名篩選
             const isWithinPeriod = (!start_date || new Date(pickup.created_at) >= new Date(start_date)) &&
-                                   (!end_date || new Date(pickup.created_at) <= new Date(end_date)) &&
+                                   (!end_date || new Date(pickup.created_at) < new Date(new Date(end_date).getTime() + 86400000)) &&
                                    (!picker_name || pickup.picker_name.includes(picker_name));
 
             while (quantityToPick > 0) {
