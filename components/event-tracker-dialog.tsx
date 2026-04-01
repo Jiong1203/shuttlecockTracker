@@ -100,8 +100,8 @@ function parseLineMessage(text: string): {
 const fmtMoney = (n: number) => `$${Math.abs(n).toLocaleString()}`
 const profitClass = (p: number) =>
   p > 0 ? 'text-red-500 dark:text-red-400 font-bold' :
-  p < 0 ? 'text-green-600 dark:text-green-500 font-bold' :
-  'text-muted-foreground font-bold'
+    p < 0 ? 'text-green-600 dark:text-green-500 font-bold' :
+      'text-muted-foreground font-bold'
 const profitLabel = (p: number) => `${p >= 0 ? '+' : '-'}${fmtMoney(p)}`
 
 // ─── CreateClubDialog ─────────────────────────────────────────────────────────
@@ -147,11 +147,11 @@ function CreateClubDialog({
         <div className="space-y-4 py-2">
           <div className="space-y-1.5">
             <Label>球團名稱 <span className="text-red-500">*</span></Label>
-            <Input placeholder="例：瘋羽無懼" value={name} onChange={e => setName(e.target.value)} />
+            <Input placeholder="例：快樂打羽球" value={name} onChange={e => setName(e.target.value)} />
           </div>
           <div className="space-y-1.5">
             <Label>隊長 / 負責人 <span className="text-red-500">*</span></Label>
-            <Input placeholder="例：炯文" value={leaderName} onChange={e => setLeaderName(e.target.value)} />
+            <Input placeholder="例：阿呆" value={leaderName} onChange={e => setLeaderName(e.target.value)} />
           </div>
           <div className="space-y-1.5">
             <Label>PIN 碼 <span className="text-red-500">*</span></Label>
