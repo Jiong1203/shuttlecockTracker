@@ -282,8 +282,8 @@ export default function ClubsPage() {
 
         {/* Club Table */}
         <div className="rounded-xl border bg-card overflow-hidden shadow-sm">
-          {/* Table Header */}
-          <div className="grid grid-cols-[1fr_160px_140px_130px] gap-4 px-5 py-3 bg-muted/40 border-b text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+          {/* Table Header — desktop only */}
+          <div className="hidden md:grid grid-cols-[1fr_160px_140px_130px] gap-4 px-5 py-3 bg-muted/40 border-b text-xs font-semibold text-muted-foreground uppercase tracking-wide">
             <span>球團名稱</span>
             <span>隊長 / 負責人</span>
             <span>建立日期</span>
@@ -304,30 +304,40 @@ export default function ClubsPage() {
             clubs.map((club, i) => (
               <div
                 key={club.id}
-                className={`grid grid-cols-[1fr_160px_140px_130px] gap-4 px-5 py-4 items-center hover:bg-muted/20 transition-colors ${i < clubs.length - 1 ? 'border-b border-border/60' : ''}`}
+                className={`px-5 py-4 hover:bg-muted/20 transition-colors ${i < clubs.length - 1 ? 'border-b border-border/60' : ''}`}
               >
-                <div>
-                  <div className="font-semibold text-foreground">🏸 {club.name}</div>
+                {/* Mobile layout */}
+                <div className="flex items-center gap-3 md:hidden">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-foreground truncate">🏸 {club.name}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      {club.leader_name} · {new Date(club.created_at).toLocaleDateString('zh-TW')}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button size="sm" variant="outline" className="gap-1.5 h-9 text-xs" onClick={() => openPin(club)}>
+                      <LogIn className="w-3.5 h-3.5" /> 進入
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-9 w-9 p-0 text-muted-foreground hover:text-foreground" onClick={() => openSettings(club)}>
+                      <Settings className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="text-sm text-muted-foreground">{club.leader_name}</div>
-                <div className="text-sm text-muted-foreground">
-                  {new Date(club.created_at).toLocaleDateString('zh-TW')}
-                </div>
-                <div className="flex items-center justify-end gap-2">
-                  <Button
-                    size="sm" variant="outline"
-                    className="gap-1.5 h-8 text-xs"
-                    onClick={() => openPin(club)}
-                  >
-                    <LogIn className="w-3.5 h-3.5" /> 進入
-                  </Button>
-                  <Button
-                    size="sm" variant="ghost"
-                    className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-                    onClick={() => openSettings(club)}
-                  >
-                    <Settings className="w-3.5 h-3.5" />
-                  </Button>
+                {/* Desktop layout */}
+                <div className="hidden md:grid grid-cols-[1fr_160px_140px_130px] gap-4 items-center">
+                  <div className="font-semibold text-foreground truncate">🏸 {club.name}</div>
+                  <div className="text-sm text-muted-foreground">{club.leader_name}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {new Date(club.created_at).toLocaleDateString('zh-TW')}
+                  </div>
+                  <div className="flex items-center justify-end gap-2">
+                    <Button size="sm" variant="outline" className="gap-1.5 h-8 text-xs" onClick={() => openPin(club)}>
+                      <LogIn className="w-3.5 h-3.5" /> 進入
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground" onClick={() => openSettings(club)}>
+                      <Settings className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             ))

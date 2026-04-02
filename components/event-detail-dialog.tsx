@@ -65,7 +65,7 @@ function ProfitCard({ event }: { event: FullEvent }) {
     { label: '利潤', value: profitLabel(event.profit), className: `text-lg ${profitClass(event.profit)} font-black` },
   ]
   return (
-    <div className="grid grid-cols-4 gap-2 rounded-xl border p-3 bg-muted/30">
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 rounded-xl border p-3 bg-muted/30">
       {items.map(it => (
         <div key={it.label} className="text-center space-y-0.5">
           <div className="text-[10px] text-muted-foreground">{it.label}</div>
@@ -135,7 +135,7 @@ function FifoCalculator({ eventId, onApply }: { eventId: string; onApply: (cost:
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-[380px]">
+        <DialogContent className="w-[92vw] sm:max-w-[380px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
               <Sparkles className="w-4 h-4 text-blue-600" /> FIFO 用球成本試算
@@ -197,8 +197,8 @@ function FifoCalculator({ eventId, onApply }: { eventId: string; onApply: (cost:
 // ─── AttendeeRow ──────────────────────────────────────────────────────────────
 
 function AttendeeRow({
-  a, eventId, onUpdated,
-}: { a: Attendee; eventId: string; onUpdated: () => void }) {
+  a, eventId, isSettled, onUpdated,
+}: { a: Attendee; eventId: string; isSettled: boolean; onUpdated: () => void }) {
   const [loading, setLoading] = useState(false)
   const [fee, setFee] = useState(String(a.fee))
   const [editingFee, setEditingFee] = useState(false)
@@ -233,9 +233,9 @@ function AttendeeRow({
   }
 
   return (
-    <div className={`flex items-center gap-2 py-2 px-1 rounded-lg text-sm transition-colors ${loading ? 'opacity-50' : ''}`}>
+    <div className={`flex items-center gap-2 py-2.5 px-1 rounded-lg text-sm transition-colors ${loading ? 'opacity-50' : ''}`}>
       {/* Name */}
-      <span className={`flex-1 font-medium truncate ${a.is_free ? 'text-muted-foreground' : ''}`}>
+      <span className={`flex-1 font-medium truncate min-w-0 ${a.is_free ? 'text-muted-foreground' : ''}`}>
         {a.display_name}
         {a.is_free && <span className="ml-1 text-[10px] bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded border border-amber-300">免費</span>}
       </span>
@@ -250,12 +250,13 @@ function AttendeeRow({
             onChange={e => setFee(e.target.value)}
             onBlur={handleFeeBlur}
             onKeyDown={e => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
-            className="h-7 w-20 text-xs"
+            className="h-8 w-16 sm:w-20 text-xs"
           />
         ) : (
           <button
-            onClick={() => setEditingFee(true)}
-            className="w-20 text-right text-muted-foreground hover:text-foreground text-xs hover:underline"
+            onClick={() => !isSettled && setEditingFee(true)}
+            disabled={isSettled}
+            className={`w-16 sm:w-20 text-right text-xs py-1 ${isSettled ? 'text-muted-foreground cursor-default' : 'text-muted-foreground hover:text-foreground hover:underline'}`}
           >
             ${Number(a.fee).toLocaleString()}
           </button>
@@ -265,8 +266,14 @@ function AttendeeRow({
       {/* Free toggle */}
       <button
         onClick={() => patch({ isFree: !a.is_free })}
-        disabled={loading}
-        className={`text-xs px-1.5 py-0.5 rounded border transition-colors ${a.is_free ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border-amber-300' : 'text-muted-foreground border-border hover:bg-muted'}`}
+        disabled={loading || isSettled}
+        className={`text-xs px-2 py-1.5 rounded border transition-colors shrink-0 ${
+          isSettled
+            ? 'opacity-40 cursor-not-allowed border-border text-muted-foreground'
+            : a.is_free
+              ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border-amber-300'
+              : 'text-muted-foreground border-border hover:bg-muted'
+        }`}
       >
         免費
       </button>
@@ -275,17 +282,25 @@ function AttendeeRow({
       {!a.is_free && (
         <button
           onClick={() => patch({ paid: !a.paid })}
-          disabled={loading}
-          className={`text-xs px-2 py-0.5 rounded-full border font-medium transition-colors ${a.paid ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-300' : 'text-muted-foreground border-border hover:bg-muted'}`}
+          disabled={loading || isSettled}
+          className={`text-xs px-2 py-1.5 rounded-full border font-medium transition-colors shrink-0 ${
+            isSettled
+              ? 'opacity-40 cursor-not-allowed border-border text-muted-foreground'
+              : a.paid
+                ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-300'
+                : 'text-muted-foreground border-border hover:bg-muted'
+          }`}
         >
           {a.paid ? '已繳' : '未繳'}
         </button>
       )}
 
       {/* Delete */}
-      <button onClick={handleDelete} disabled={loading} className="text-muted-foreground hover:text-red-500 transition-colors">
-        <Trash2 className="w-3.5 h-3.5" />
-      </button>
+      {!isSettled && (
+        <button onClick={handleDelete} disabled={loading} className="text-muted-foreground hover:text-red-500 transition-colors p-1 shrink-0">
+          <Trash2 className="w-4 h-4" />
+        </button>
+      )}
     </div>
   )
 }
@@ -413,7 +428,7 @@ export function EventDetailDialog({ eventId, open, onOpenChange }: EventDetailDi
             <div className="flex items-center gap-2 text-base">
               <span className="font-black">{event?.event_date ?? '—'}</span>
               {event?.venue_name && (
-                <span className="text-sm font-normal text-muted-foreground">{event.venue_name}</span>
+                <span className="text-sm font-normal text-muted-foreground truncate max-w-[140px] sm:max-w-none">{event.venue_name}</span>
               )}
             </div>
             {event?.is_settled && (
@@ -434,12 +449,12 @@ export function EventDetailDialog({ eventId, open, onOpenChange }: EventDetailDi
             <ProfitCard event={event} />
 
             {/* Shuttle cost controls */}
-            <div className="flex items-center justify-between text-xs px-1">
+            <div className="flex flex-col gap-1.5 text-xs px-1 sm:flex-row sm:items-center sm:justify-between">
               <span className="text-muted-foreground">
                 用球成本：<span className="font-semibold text-foreground">{fmtMoney(event.shuttle_cost)}</span>
                 <span className="ml-1 opacity-60">({event.shuttle_cost_mode === 'auto' ? 'FIFO' : '手動'})</span>
               </span>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <FifoCalculator eventId={eventId} onApply={handleApplyFifoCost} />
                 {editingShuttle ? (
                   <div className="flex items-center gap-1">
@@ -448,15 +463,15 @@ export function EventDetailDialog({ eventId, open, onOpenChange }: EventDetailDi
                       value={shuttleCostInput}
                       onChange={e => setShuttleCostInput(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && handleUpdateShuttleCost()}
-                      className="h-6 w-20 text-xs"
+                      className="h-7 w-24 text-xs"
                     />
-                    <button onClick={handleUpdateShuttleCost} className="text-blue-600 hover:underline text-xs">套用</button>
-                    <button onClick={() => setEditingShuttle(false)} className="text-muted-foreground hover:underline text-xs">取消</button>
+                    <button onClick={handleUpdateShuttleCost} className="text-blue-600 hover:underline text-xs py-1">套用</button>
+                    <button onClick={() => setEditingShuttle(false)} className="text-muted-foreground hover:underline text-xs py-1">取消</button>
                   </div>
                 ) : (
                   <button
                     onClick={() => { setShuttleCostInput(String(event.shuttle_cost)); setEditingShuttle(true) }}
-                    className="flex items-center gap-1 text-muted-foreground hover:text-foreground hover:underline"
+                    className="flex items-center gap-1 text-muted-foreground hover:text-foreground hover:underline py-1"
                   >
                     <RotateCcw className="w-3 h-3" /> 手動修改
                   </button>
@@ -466,7 +481,7 @@ export function EventDetailDialog({ eventId, open, onOpenChange }: EventDetailDi
 
             {/* Attendees */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between px-1">
+              <div className="flex flex-col gap-2 px-1 sm:flex-row sm:items-center sm:justify-between">
                 <span className="text-sm font-semibold">
                   出席名單
                   <span className="ml-1.5 text-xs font-normal text-muted-foreground">
@@ -479,12 +494,12 @@ export function EventDetailDialog({ eventId, open, onOpenChange }: EventDetailDi
                       placeholder="統一費用"
                       value={bulkFee}
                       onChange={e => setBulkFee(e.target.value)}
-                      className="h-7 w-24 text-xs"
+                      className="h-8 w-24 text-xs"
                       type="number"
                     />
-                    <button onClick={handleApplyBulkFee} className="text-xs text-blue-600 dark:text-blue-400 hover:underline">套用</button>
+                    <button onClick={handleApplyBulkFee} className="text-xs text-blue-600 dark:text-blue-400 hover:underline px-1 py-1.5">套用</button>
                   </div>
-                  <button onClick={handleMarkAllPaid} className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline">全部已繳</button>
+                  <button onClick={handleMarkAllPaid} className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline px-1 py-1.5">全部已繳</button>
                 </div>
               </div>
 
@@ -494,7 +509,7 @@ export function EventDetailDialog({ eventId, open, onOpenChange }: EventDetailDi
                 ) : (
                   event.event_attendees.map(a => (
                     <div key={a.id} className="px-3">
-                      <AttendeeRow a={a} eventId={eventId} onUpdated={fetchEvent} />
+                      <AttendeeRow a={a} eventId={eventId} isSettled={event.is_settled} onUpdated={fetchEvent} />
                     </div>
                   ))
                 )}

@@ -221,8 +221,8 @@ function CreateEventDialog({
                   <div key={i} className="flex items-center gap-2 text-sm py-0.5">
                     <span className="text-[10px] text-muted-foreground w-5 text-right shrink-0">{i + 1}.</span>
                     <input type="checkbox" checked={p.included} onChange={e => setParsedNames(prev => prev.map((n, j) => j === i ? { ...n, included: e.target.checked } : n))} className="w-3.5 h-3.5 accent-blue-600" />
-                    <Input value={p.name} onChange={e => setParsedNames(prev => prev.map((n, j) => j === i ? { ...n, name: e.target.value } : n))} className="h-7 text-xs flex-1" />
-                    <Input type="number" value={p.isFree ? '' : p.fee} disabled={p.isFree} onChange={e => setParsedNames(prev => prev.map((n, j) => j === i ? { ...n, fee: parseFloat(e.target.value) || 0 } : n))} className="h-7 text-xs w-20" placeholder="費用" />
+                    <Input value={p.name} onChange={e => setParsedNames(prev => prev.map((n, j) => j === i ? { ...n, name: e.target.value } : n))} className="h-7 text-xs flex-1 min-w-0" />
+                    <Input type="number" value={p.isFree ? '' : p.fee} disabled={p.isFree} onChange={e => setParsedNames(prev => prev.map((n, j) => j === i ? { ...n, fee: parseFloat(e.target.value) || 0 } : n))} className="h-7 text-xs w-16 sm:w-20" placeholder="費用" />
                     <button onClick={() => setParsedNames(prev => prev.map((n, j) => j === i ? { ...n, isFree: !n.isFree } : n))} className={`text-xs px-1.5 py-0.5 rounded border transition-colors ${p.isFree ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border-amber-300' : 'text-muted-foreground border-border hover:bg-muted'}`}>免費</button>
                   </div>
                 ))}
@@ -233,7 +233,7 @@ function CreateEventDialog({
           {/* 場地資訊 */}
           <div className="space-y-3">
             <Label className="text-sm font-semibold">場地資訊</Label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">活動日期 *</Label>
                 <Input type="date" value={eventDate} onChange={e => setEventDate(e.target.value)} />
@@ -459,7 +459,7 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
 
         {/* Events Table */}
         <div className="rounded-xl border bg-card overflow-hidden shadow-sm">
-          {/* Table Header */}
+          {/* Table Header — desktop only */}
           <div className="hidden md:grid grid-cols-[120px_1fr_90px_90px_90px_100px_80px_50px] gap-3 px-5 py-3 bg-muted/40 border-b text-xs font-semibold text-muted-foreground uppercase tracking-wide">
             <span>日期</span>
             <span>場地</span>
@@ -485,30 +485,47 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
               <div
                 key={ev.id}
                 onClick={() => { setDetailEventId(ev.id); setDetailOpen(true) }}
-                className={`grid grid-cols-[1fr_auto] md:grid-cols-[120px_1fr_90px_90px_90px_100px_80px_50px] gap-3 px-5 py-4 items-center hover:bg-muted/20 cursor-pointer transition-colors group ${i < events.length - 1 ? 'border-b border-border/60' : ''}`}
+                className={`px-5 hover:bg-muted/20 cursor-pointer transition-colors group ${i < events.length - 1 ? 'border-b border-border/60' : ''}`}
               >
                 {/* Mobile layout */}
-                <div className="md:contents">
-                  {/* Date */}
+                <div className="flex items-center gap-3 py-3.5 md:hidden">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-semibold text-sm">{ev.event_date}</span>
+                      {ev.is_settled && <BadgeCheck className="w-3.5 h-3.5 text-green-500 shrink-0" />}
+                    </div>
+                    <div className="text-xs text-muted-foreground truncate mt-0.5">{ev.venue_name || '未設定場地'}</div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`text-sm font-bold ${profitClass(ev.profit)}`}>{profitLabel(ev.profit)}</span>
+                    <div onClick={e => e.stopPropagation()}>
+                      {!ev.is_settled && (
+                        <button
+                          onClick={() => handleDelete(ev)}
+                          disabled={deletingId === ev.id}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
+                        >
+                          {deletingId === ev.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                {/* Desktop layout */}
+                <div className="hidden md:grid grid-cols-[120px_1fr_90px_90px_90px_100px_80px_50px] gap-3 py-4 items-center">
                   <div className="font-semibold text-sm">{ev.event_date}</div>
-                  {/* Venue */}
-                  <div className="text-sm text-muted-foreground truncate hidden md:block">{ev.venue_name || '—'}</div>
-                  {/* Mobile: venue + profit in one row */}
-                  <div className="text-xs text-muted-foreground md:hidden">{ev.venue_name || '未設定場地'}</div>
-                  {/* Costs */}
-                  <div className="text-sm text-right hidden md:block">{fmtMoney(ev.venue_cost)}</div>
-                  <div className="text-sm text-right hidden md:block">{fmtMoney(ev.shuttle_cost)}</div>
-                  <div className="text-sm text-right hidden md:block">{fmtMoney(ev.total_revenue)}</div>
+                  <div className="text-sm text-muted-foreground truncate">{ev.venue_name || '—'}</div>
+                  <div className="text-sm text-right">{fmtMoney(ev.venue_cost)}</div>
+                  <div className="text-sm text-right">{fmtMoney(ev.shuttle_cost)}</div>
+                  <div className="text-sm text-right">{fmtMoney(ev.total_revenue)}</div>
                   <div className={`text-sm text-right ${profitClass(ev.profit)}`}>{profitLabel(ev.profit)}</div>
-                  {/* Status */}
-                  <div className="text-center hidden md:flex justify-center">
+                  <div className="flex justify-center">
                     {ev.is_settled ? (
                       <BadgeCheck className="w-4 h-4 text-green-500" />
                     ) : (
                       <span className="w-2 h-2 rounded-full bg-muted-foreground/30 inline-block" />
                     )}
                   </div>
-                  {/* Delete */}
                   <div className="flex justify-end" onClick={e => e.stopPropagation()}>
                     {!ev.is_settled && (
                       <button
