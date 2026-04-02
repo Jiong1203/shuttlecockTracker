@@ -5,7 +5,7 @@ import { getGroupId } from '@/lib/supabase/helpers'
 export const dynamic = 'force-dynamic'
 
 // POST /api/events/[id]/shuttle-cost
-// FIFO 試算：以活動日為基準，計算指定球種與顆數的用球成本
+// 先進先出 試算：以活動日為基準，計算指定球種與顆數的用球成本
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -30,7 +30,7 @@ export async function POST(
   if (!shuttlecockTypeId) return NextResponse.json({ error: '請選擇球種' }, { status: 400 })
   if (!quantity || quantity <= 0) return NextResponse.json({ error: '顆數需大於 0' }, { status: 400 })
 
-  // 取得活動日（含當天）前所有入庫批次，升冪排列以 FIFO 消耗
+  // 取得活動日（含當天）前所有入庫批次，升冪排列以 先進先出 消耗
   const { data: restocks, error: restockError } = await supabase
     .from('restock_records')
     .select('quantity, unit_price')
@@ -52,7 +52,7 @@ export async function POST(
 
   if (pickupError) return NextResponse.json({ error: pickupError.message }, { status: 500 })
 
-  // FIFO 試算
+  // 先進先出 試算
   const totalUsedBefore = pickups.reduce((sum, p) => sum + p.quantity, 0)
   let remaining = totalUsedBefore  // 先消耗掉已用掉的批次
   let toCalc = quantity            // 本次要計算的顆數
@@ -72,7 +72,7 @@ export async function POST(
   }
 
   if (toCalc > 0) {
-    return NextResponse.json({ error: '庫存不足，無法完成 FIFO 試算' }, { status: 400 })
+    return NextResponse.json({ error: '庫存不足，無法完成 先進先出 試算' }, { status: 400 })
   }
 
   return NextResponse.json({ cost: Math.round(cost * 100) / 100 })

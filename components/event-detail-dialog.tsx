@@ -131,14 +131,14 @@ function FifoCalculator({ eventId, onApply }: { eventId: string; onApply: (cost:
         onClick={() => setOpen(true)}
         className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 hover:underline"
       >
-        <Sparkles className="w-3.5 h-3.5" /> FIFO 自動試算
+        <Sparkles className="w-3.5 h-3.5" /> 先進先出 自動試算
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="w-[92vw] sm:max-w-[380px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
-              <Sparkles className="w-4 h-4 text-blue-600" /> FIFO 用球成本試算
+              <Sparkles className="w-4 h-4 text-blue-600" /> 先進先出 用球成本試算
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
@@ -173,7 +173,7 @@ function FifoCalculator({ eventId, onApply }: { eventId: string; onApply: (cost:
             </div>
             {result !== null && (
               <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 p-3 text-center space-y-0.5">
-                <div className="text-xs text-muted-foreground">FIFO 試算結果（{piecesQty} 顆）</div>
+                <div className="text-xs text-muted-foreground">先進先出 試算結果（{piecesQty} 顆）</div>
                 <div className="text-xl font-black text-blue-600 dark:text-blue-400">${result.toLocaleString()}</div>
                 <div className="text-[11px] text-muted-foreground">每顆約 ${(result / parseFloat(piecesQty)).toFixed(1)} 元</div>
               </div>
@@ -452,7 +452,7 @@ export function EventDetailDialog({ eventId, open, onOpenChange }: EventDetailDi
             <div className="flex flex-col gap-1.5 text-xs px-1 sm:flex-row sm:items-center sm:justify-between">
               <span className="text-muted-foreground">
                 用球成本：<span className="font-semibold text-foreground">{fmtMoney(event.shuttle_cost)}</span>
-                <span className="ml-1 opacity-60">({event.shuttle_cost_mode === 'auto' ? 'FIFO' : '手動'})</span>
+                <span className="ml-1 opacity-60">({event.shuttle_cost_mode === 'auto' ? '先進先出' : '手動'})</span>
               </span>
               <div className="flex items-center gap-3 flex-wrap">
                 <FifoCalculator eventId={eventId} onApply={handleApplyFifoCost} />
