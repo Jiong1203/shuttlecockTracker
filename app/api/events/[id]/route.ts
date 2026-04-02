@@ -46,9 +46,14 @@ export async function GET(
     .reduce((sum: number, a: { fee: number }) => sum + Number(a.fee), 0)
   const profit = totalRevenue - Number(data.shuttle_cost) - venueCost
 
-  const { clubs, ...rest } = data
-  void clubs
-  return NextResponse.json({ ...rest, venue_cost: venueCost, total_revenue: totalRevenue, profit })
+  // 依 created_at 升冪排列，確保與 LINE 訊息新增順序一致
+  const sortedAttendees = [...data.event_attendees].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  )
+
+  const { clubs, event_attendees, ...rest } = data
+  void clubs; void event_attendees
+  return NextResponse.json({ ...rest, event_attendees: sortedAttendees, venue_cost: venueCost, total_revenue: totalRevenue, profit })
 }
 
 // PATCH /api/events/[id] — 更新活動資訊或標記已結算

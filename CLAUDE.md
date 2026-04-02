@@ -5,7 +5,7 @@
 A multi-tenant badminton inventory management SaaS built with Next.js 15 + Supabase.
 Live at: https://shuttlecock-tracker.vercel.app/
 
-Core features: inventory tracking, pickup registration, FIFO cost settlement, group management.
+Core features: inventory tracking, pickup registration, FIFO cost settlement, group management, event/club record tracking (開團紀錄).
 
 ## Tech Stack
 
@@ -26,15 +26,28 @@ npm run lint    # ESLint
 
 ```
 app/
-  api/           # Route handlers (all protected via Supabase Auth)
-  actions/       # Server Actions (auth logging)
-  login/         # Login / sign-up page
-  page.tsx        # Home (Server Component — fetches data server-side)
-  client-wrapper.tsx   # Dynamic import wrapper (ssr: false)
-  home-interactive.tsx # Client-side interactions + InventoryManagerDialog
+  api/
+    clubs/               # Club CRUD + PIN verify
+      [id]/
+        verify-pin/      # POST: PIN verification
+    events/              # Event CRUD + shuttle cost FIFO
+      [id]/
+        attendees/       # Attendee CRUD
+          [aid]/
+        shuttle-cost/    # POST: FIFO cost calculation
+  clubs/
+    page.tsx             # Club list (full page, admin table style)
+    [id]/page.tsx        # Club detail — events list + PIN gate
+  actions/               # Server Actions (auth logging)
+  login/                 # Login / sign-up page
+  page.tsx               # Home (Server Component — fetches data server-side)
+  client-wrapper.tsx     # Dynamic import wrapper (ssr: false)
+  home-interactive.tsx   # Client-side interactions + InventoryManagerDialog
 components/
-  ui/            # Shadcn base components + Toast system
-  *.tsx          # Feature components (pickup, restock, settlement, etc.)
+  ui/                    # Shadcn base components + Toast system
+  event-detail-dialog.tsx  # Event detail: attendees, FIFO calculator, settlement
+  event-tracker-dialog.tsx # Header button → link to /clubs
+  *.tsx                  # Other feature components (pickup, restock, settlement, etc.)
 lib/
   supabase/
     client.ts    # Browser Supabase client
@@ -42,7 +55,9 @@ lib/
     helpers.ts   # Shared getGroupId() utility
   crypto.ts      # PBKDF2 PIN hashing (Web Crypto API, no extra packages)
   utils.ts       # cn() Tailwind merge
-middleware.ts    # Auth guard — redirects unauthenticated users to /login
+middleware.ts    # Auth guard — protects / and /clubs/* routes
+supabase/
+  migrations/    # Supabase CLI migration files (switched from single-file plan)
 ```
 
 ## Key Conventions
@@ -73,27 +88,26 @@ middleware.ts    # Auth guard — redirects unauthenticated users to /login
 - `ToastContainer` must be mounted in the page (already in `home-interactive.tsx` and `login/page.tsx`)
 - Do NOT use `alert()` — inconsistent UX
 
-## Database Migration Strategy (Plan A)
+## Database Migration Strategy
 
-This project uses a **single cumulative SQL file** (`supabase-migration.sql`) instead of Supabase CLI migrations.
+This project switched to **Supabase CLI migrations** (`supabase/migrations/`).
 
 ### How to apply a new migration
 
-1. Append the SQL to the bottom of `supabase-migration.sql` with a clear header:
-
-```sql
--- ==========================================
--- Migration: YYYY-MM-DD <short description>
--- ==========================================
-<your SQL here>
+```bash
+supabase migration new <description>   # creates timestamped .sql file
+# edit the file, then:
+supabase db push                        # push to linked project
 ```
 
-2. Copy **only the new block** and run it in **Supabase Dashboard → SQL Editor**.
-   Do NOT re-run the entire file (it will break existing data).
+### Migration files
 
-3. Commit `supabase-migration.sql` to git as a record.
+| File | Description |
+|------|-------------|
+| `20260401070700_remote_schema.sql` | Baseline remote schema snapshot |
+| `20260401071611_add_club_event_tables.sql` | clubs, badminton_events, event_attendees tables + RLS + indexes |
 
-### Applied migrations log
+### Legacy applied migrations (pre-CLI, via SQL Editor)
 
 | Date       | Description                                      |
 |------------|--------------------------------------------------|
@@ -102,6 +116,35 @@ This project uses a **single cumulative SQL file** (`supabase-migration.sql`) in
 | (phase 3)  | is_active column on shuttlecock_types            |
 | 2026-03-30 | `insert_pickup_record` RPC function (TOCTOU fix) |
 | 2026-03-30 | 效能索引：pickup/restock/shuttlecock_types 常用查詢欄位 |
+
+## 開團紀錄模組（Club Event Tracker）
+
+### Architecture
+- One group can have multiple clubs (球團); each club is PIN-protected
+- PIN uses the same PBKDF2 hashing as restock PIN (`lib/crypto.ts`)
+- PIN verification state stored in `sessionStorage` (`club_verified_<id>`) — cleared on tab close
+
+### Data model
+```
+groups → clubs → badminton_events → event_attendees
+```
+
+### Key behaviors
+- **Attendee order**: preserved from LINE message → sequential `for...of` insert → API sorts by `created_at ASC`
+- **Shuttle cost**: always set to manual/0 on create; configure in event detail via FIFO calculator or manual input
+- **FIFO unit conversion**: inventory uses 桶 (tubes); UI shows 顆 (pieces); `PIECES_PER_TUBE = 12`
+- **Profit colors**: Taiwan stock market convention — positive = red, negative = green
+- **Settlement**: once `is_settled=true`, event cannot be deleted (403)
+
+### LINE message parser (frontend only)
+- Regex extracts player names, fees from LINE group messages
+- Handles formats: `1. Name $fee`, `免費` keyword → `isFree=true`
+- Located in `app/clubs/[id]/page.tsx` (inline in CreateEventDialog)
+
+### FIFO calculator
+- Located in `components/event-detail-dialog.tsx` (FifoCalculator component)
+- Calls `POST /api/events/[id]/shuttle-cost` with quantity in 桶
+- Shows breakdown: `X 顆 ÷ 12 = Y.YY 桶` and per-piece cost
 
 ## Environment Variables
 

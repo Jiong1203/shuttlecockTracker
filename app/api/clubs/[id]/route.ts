@@ -5,6 +5,28 @@ import { hashPin } from '@/lib/crypto'
 
 export const dynamic = 'force-dynamic'
 
+// GET /api/clubs/[id] — 取得單一 club 資訊
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const supabase = await createClient()
+  const groupId = await getGroupId(supabase)
+  if (!groupId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { id } = await params
+
+  const { data, error } = await supabase
+    .from('clubs')
+    .select('id, name, leader_name, created_at')
+    .eq('id', id)
+    .eq('group_id', groupId)
+    .single()
+
+  if (error || !data) return NextResponse.json({ error: '找不到此球團' }, { status: 404 })
+  return NextResponse.json(data)
+}
+
 // PATCH /api/clubs/[id] — 更新 club（名稱 / 負責人 / PIN）
 export async function PATCH(
   request: Request,

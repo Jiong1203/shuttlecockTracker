@@ -11,8 +11,7 @@ import { SettlementDialog } from "@/components/settlement-dialog"
 import { InventoryManagerDialog } from "@/components/inventory-manager-dialog"
 import { PickupHistory } from "@/components/pickup-history"
 import { ToastContainer } from "@/components/ui/toast"
-import { LogOut, Loader2 } from "lucide-react"
-import { UserManualDialog } from "@/components/user-manual-dialog"
+import { LogOut, Loader2, BookOpen } from "lucide-react"
 import { EventTrackerDialog } from "@/components/event-tracker-dialog"
 
 interface InventorySummary {
@@ -69,7 +68,17 @@ export function HomeHeaderControls({ groupName }: { groupName: string }) {
 
   return (
     <div className="flex items-center gap-2 bg-muted/40 p-1.5 rounded-xl border border-border/50">
-      <UserManualDialog />
+      <Button
+        variant="ghost"
+        size="sm"
+        asChild
+        className="text-muted-foreground hover:text-foreground hover:bg-muted gap-2 transition-all px-2 md:px-3"
+      >
+        <a href="/manual" target="_blank" rel="noopener noreferrer">
+          <BookOpen className="w-4 h-4" />
+          <span className="hidden md:inline">使用手冊</span>
+        </a>
+      </Button>
       <EventTrackerDialog />
       <ThemeToggle />
       <GroupSettingsDialog

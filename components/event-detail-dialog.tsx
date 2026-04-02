@@ -78,11 +78,13 @@ function ProfitCard({ event }: { event: FullEvent }) {
 
 // ─── FifoCalculator ───────────────────────────────────────────────────────────
 
+const PIECES_PER_TUBE = 12  // 1 桶 = 12 顆（標準羽毛球）
+
 function FifoCalculator({ eventId, onApply }: { eventId: string; onApply: (cost: number) => void }) {
   const [open, setOpen] = useState(false)
   const [types, setTypes] = useState<ShuttleType[]>([])
   const [typeId, setTypeId] = useState('')
-  const [qty, setQty] = useState('')
+  const [piecesQty, setPiecesQty] = useState('')  // 使用者輸入：顆
   const [result, setResult] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -92,10 +94,15 @@ function FifoCalculator({ eventId, onApply }: { eventId: string; onApply: (cost:
     if (res.ok) setTypes(data.filter((t: ShuttleType & { is_active: boolean }) => t.is_active))
   }, [])
 
-  useEffect(() => { if (open) { fetchTypes(); setResult(null); setTypeId(''); setQty('') } }, [open, fetchTypes])
+  useEffect(() => {
+    if (open) { fetchTypes(); setResult(null); setTypeId(''); setPiecesQty('') }
+  }, [open, fetchTypes])
+
+  // 顆 → 桶換算（庫存單位為桶）
+  const tubesQty = piecesQty ? parseFloat(piecesQty) / PIECES_PER_TUBE : 0
 
   const handleCalc = async () => {
-    if (!typeId || !qty || parseFloat(qty) <= 0) {
+    if (!typeId || !piecesQty || parseFloat(piecesQty) <= 0) {
       showToast('請選擇球種並輸入顆數', 'warning'); return
     }
     setLoading(true); setResult(null)
@@ -103,7 +110,8 @@ function FifoCalculator({ eventId, onApply }: { eventId: string; onApply: (cost:
       const res = await fetch(`/api/events/${eventId}/shuttle-cost`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ shuttlecockTypeId: typeId, quantity: parseFloat(qty) }),
+        // 庫存以桶為單位，轉換後送出
+        body: JSON.stringify({ shuttlecockTypeId: typeId, quantity: tubesQty }),
       })
       const data = await res.json()
       if (!res.ok) { showToast(data.error, 'error'); return }
@@ -127,7 +135,7 @@ function FifoCalculator({ eventId, onApply }: { eventId: string; onApply: (cost:
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-[340px]">
+        <DialogContent className="sm:max-w-[380px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
               <Sparkles className="w-4 h-4 text-blue-600" /> FIFO 用球成本試算
@@ -150,13 +158,24 @@ function FifoCalculator({ eventId, onApply }: { eventId: string; onApply: (cost:
               </select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">顆數</Label>
-              <Input type="number" min="1" placeholder="本場使用顆數" value={qty} onChange={e => setQty(e.target.value)} />
+              <Label className="text-xs">本場用球（顆）</Label>
+              <Input
+                type="number" min="1" step="1"
+                placeholder={`輸入顆數，${PIECES_PER_TUBE} 顆 = 1 桶`}
+                value={piecesQty}
+                onChange={e => { setPiecesQty(e.target.value); setResult(null) }}
+              />
+              {piecesQty && parseFloat(piecesQty) > 0 && (
+                <p className="text-[11px] text-muted-foreground">
+                  {piecesQty} 顆 ÷ {PIECES_PER_TUBE} = <span className="font-semibold text-foreground">{tubesQty.toFixed(2)} 桶</span>（庫存計算單位）
+                </p>
+              )}
             </div>
             {result !== null && (
-              <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 p-3 text-center">
-                <div className="text-xs text-muted-foreground">FIFO 試算結果</div>
+              <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 p-3 text-center space-y-0.5">
+                <div className="text-xs text-muted-foreground">FIFO 試算結果（{piecesQty} 顆）</div>
                 <div className="text-xl font-black text-blue-600 dark:text-blue-400">${result.toLocaleString()}</div>
+                <div className="text-[11px] text-muted-foreground">每顆約 ${(result / parseFloat(piecesQty)).toFixed(1)} 元</div>
               </div>
             )}
           </div>
@@ -388,7 +407,7 @@ export function EventDetailDialog({ eventId, open, onOpenChange }: EventDetailDi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[520px] max-h-[85vh] flex flex-col">
+      <DialogContent className="w-[95vw] sm:max-w-[580px] md:max-w-[700px] max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-base">
@@ -460,7 +479,7 @@ export function EventDetailDialog({ eventId, open, onOpenChange }: EventDetailDi
                       placeholder="統一費用"
                       value={bulkFee}
                       onChange={e => setBulkFee(e.target.value)}
-                      className="h-7 w-20 text-xs"
+                      className="h-7 w-24 text-xs"
                       type="number"
                     />
                     <button onClick={handleApplyBulkFee} className="text-xs text-blue-600 dark:text-blue-400 hover:underline">套用</button>

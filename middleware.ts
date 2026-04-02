@@ -37,7 +37,11 @@ export async function middleware(request: NextRequest) {
 
   // If user is not logged in and trying to access a protected page, redirect to login
   // We'll protect the home page `/` for now
-  if (!user && request.nextUrl.pathname === '/') {
+  const protectedPaths = ['/', '/clubs']
+  const isProtected = protectedPaths.some(p =>
+    request.nextUrl.pathname === p || request.nextUrl.pathname.startsWith('/clubs/')
+  )
+  if (!user && isProtected) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
