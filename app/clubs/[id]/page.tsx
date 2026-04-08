@@ -99,12 +99,17 @@ function CreateEventDialog({
   const [lineText, setLineText] = useState('')
   const [parsedNames, setParsedNames] = useState<ParsedName[]>([])
   const [defaultFee, setDefaultFee] = useState('')
+  const [inputMode, setInputMode] = useState<'line' | 'manual'>('line')
+  const [manualText, setManualText] = useState('')
+  const [manualName, setManualName] = useState('')
+  const [manualFee, setManualFee] = useState('')
   const [loading, setLoading] = useState(false)
 
   const reset = () => {
     setEventDate(today); setVenueName(''); setCourtCount('2'); setHours('2')
     setHourlyRate(''); setNotes('')
     setLineText(''); setParsedNames([]); setDefaultFee('')
+    setInputMode('line'); setManualText(''); setManualName(''); setManualFee('')
   }
 
   const handleParse = () => {
@@ -122,6 +127,23 @@ function CreateEventDialog({
   const applyDefaultFee = () => {
     const fee = parseFloat(defaultFee) || 0
     setParsedNames(prev => prev.map(p => p.isFree ? p : { ...p, fee }))
+  }
+
+  const handleManualBatchAdd = () => {
+    const names = manualText.split('\n').map(s => s.trim()).filter(Boolean)
+    if (names.length === 0) { showToast('請輸入至少一個名稱', 'warning'); return }
+    const fee = parseFloat(defaultFee) || 0
+    setParsedNames(prev => [...prev, ...names.map(name => ({ name, included: true, fee, isFree: false }))])
+    setManualText('')
+    showToast(`已新增 ${names.length} 位出席者`, 'success')
+  }
+
+  const handleManualSingleAdd = () => {
+    if (!manualName.trim()) return
+    const fee = parseFloat(manualFee) || 0
+    setParsedNames(prev => [...prev, { name: manualName.trim(), included: true, fee, isFree: false }])
+    setManualName('')
+    setManualFee('')
   }
 
   const venueCost = (parseFloat(courtCount) || 0) * (parseFloat(hours) || 0) * (parseFloat(hourlyRate) || 0)
@@ -178,32 +200,105 @@ function CreateEventDialog({
         </DialogHeader>
 
         <div className="overflow-y-auto flex-1 space-y-5 py-1 px-1">
-          {/* LINE 解析區 */}
+          {/* 出席名單輸入區 */}
           <div className="space-y-2 rounded-xl border border-dashed border-blue-200 dark:border-blue-800 p-3 bg-blue-50/40 dark:bg-blue-950/20">
-            <Label className="flex items-center gap-1.5 text-blue-700 dark:text-blue-300 text-sm">
-              <Sparkles className="w-4 h-4" /> 貼上 LINE 報名訊息（選填，自動解析）
-            </Label>
-            <textarea
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm min-h-[80px] resize-none focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="將 LINE 群組的報名訊息貼在這裡..."
-              value={lineText}
-              onChange={e => setLineText(e.target.value)}
-            />
-            <div className="flex items-center gap-2">
-              <Input
-                placeholder="預設費用（元）" value={defaultFee}
-                onChange={e => setDefaultFee(e.target.value)}
-                className="w-36 h-8 text-sm" type="number"
-              />
-              <Button size="sm" variant="secondary" onClick={handleParse} className="gap-1.5 h-8">
-                <Sparkles className="w-3.5 h-3.5" /> 解析訊息
-              </Button>
-              {parsedNames.length > 0 && (
-                <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-                  ✓ {parsedNames.filter(p => p.included).length} 人
-                </span>
-              )}
+            {/* Tab 切換 */}
+            <div className="flex gap-1 bg-blue-100/60 dark:bg-blue-900/30 rounded-lg p-0.5 w-fit">
+              <button
+                onClick={() => setInputMode('line')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition-all ${inputMode === 'line' ? 'bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                <Sparkles className="w-3 h-3" /> LINE 解析
+              </button>
+              <button
+                onClick={() => setInputMode('manual')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition-all ${inputMode === 'manual' ? 'bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                <ClipboardList className="w-3 h-3" /> 手動輸入
+              </button>
             </div>
+
+            {inputMode === 'line' ? (
+              <div className="space-y-2">
+                <textarea
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm min-h-[80px] resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                  placeholder="將 LINE 群組的報名訊息貼在這裡..."
+                  value={lineText}
+                  onChange={e => setLineText(e.target.value)}
+                />
+                <div className="flex items-center gap-2">
+                  <Input
+                    placeholder="預設費用（元）" value={defaultFee}
+                    onChange={e => setDefaultFee(e.target.value)}
+                    className="w-36 h-8 text-sm" type="number"
+                  />
+                  <Button size="sm" variant="secondary" onClick={handleParse} className="gap-1.5 h-8">
+                    <Sparkles className="w-3.5 h-3.5" /> 解析訊息
+                  </Button>
+                  {parsedNames.length > 0 && (
+                    <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                      ✓ {parsedNames.filter(p => p.included).length} 人
+                    </span>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {/* 批次輸入：一行一人 */}
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">批次輸入（一行一人）</Label>
+                  <textarea
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm min-h-[72px] resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                    placeholder={"珍妮\n小明\n阿華"}
+                    value={manualText}
+                    onChange={e => setManualText(e.target.value)}
+                  />
+                  <div className="flex items-center gap-2">
+                    <Input
+                      placeholder="預設費用（元）" value={defaultFee}
+                      onChange={e => setDefaultFee(e.target.value)}
+                      className="w-36 h-8 text-sm" type="number"
+                    />
+                    <Button size="sm" variant="secondary" onClick={handleManualBatchAdd} className="h-8">
+                      新增至名單
+                    </Button>
+                  </div>
+                </div>
+
+                {/* 分隔線 */}
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className="flex-1 border-t border-border/60" />
+                  <span>或逐一新增</span>
+                  <div className="flex-1 border-t border-border/60" />
+                </div>
+
+                {/* 單筆新增 */}
+                <div className="flex items-center gap-2">
+                  <Input
+                    placeholder="姓名"
+                    value={manualName}
+                    onChange={e => setManualName(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleManualSingleAdd()}
+                    className="h-8 text-sm flex-1"
+                  />
+                  <Input
+                    type="number" placeholder="費用"
+                    value={manualFee}
+                    onChange={e => setManualFee(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleManualSingleAdd()}
+                    className="h-8 text-sm w-20"
+                  />
+                  <Button size="sm" onClick={handleManualSingleAdd} disabled={!manualName.trim()} className="h-8 px-3">
+                    <Plus className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+                {parsedNames.length > 0 && (
+                  <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                    ✓ 目前共 {parsedNames.filter(p => p.included).length} 人
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* 解析名單預覽 */}
