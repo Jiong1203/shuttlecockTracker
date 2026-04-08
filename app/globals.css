@@ -154,51 +154,47 @@
 
   /* Toast Styling */
   .toast-success {
-    background-color: oklch(0.95 0.05 145);
-    border-color: oklch(0.80 0.10 145);
-    color: oklch(0.35 0.15 145);
+    background-color: oklch(0.93 0.10 145);
+    border-color: oklch(0.65 0.20 145);
+    color: oklch(0.28 0.18 145);
   }
-
   .dark .toast-success {
-    background-color: oklch(0.20 0.05 145);
-    border-color: oklch(0.35 0.10 145);
-    color: oklch(0.75 0.12 145);
+    background-color: oklch(0.22 0.08 145);
+    border-color: oklch(0.50 0.18 145);
+    color: oklch(0.82 0.16 145);
   }
 
   .toast-error {
-    background-color: oklch(0.95 0.05 25);
-    border-color: oklch(0.80 0.10 25);
-    color: oklch(0.40 0.15 25);
+    background-color: oklch(0.93 0.10 25);
+    border-color: oklch(0.60 0.22 25);
+    color: oklch(0.30 0.20 25);
   }
-
   .dark .toast-error {
-    background-color: oklch(0.20 0.05 25);
-    border-color: oklch(0.35 0.10 25);
-    color: oklch(0.75 0.12 25);
+    background-color: oklch(0.22 0.08 25);
+    border-color: oklch(0.50 0.20 25);
+    color: oklch(0.82 0.16 25);
   }
 
   .toast-warning {
-    background-color: oklch(0.95 0.05 65);
-    border-color: oklch(0.80 0.10 65);
-    color: oklch(0.40 0.15 65);
+    background-color: oklch(0.93 0.12 65);
+    border-color: oklch(0.65 0.22 65);
+    color: oklch(0.32 0.18 65);
   }
-
   .dark .toast-warning {
-    background-color: oklch(0.20 0.05 65);
-    border-color: oklch(0.35 0.10 65);
-    color: oklch(0.75 0.12 65);
+    background-color: oklch(0.22 0.08 65);
+    border-color: oklch(0.55 0.20 65);
+    color: oklch(0.85 0.18 65);
   }
 
   .toast-info {
-    background-color: oklch(0.95 0.05 250);
-    border-color: oklch(0.80 0.10 250);
-    color: oklch(0.40 0.15 250);
+    background-color: oklch(0.93 0.08 250);
+    border-color: oklch(0.55 0.20 250);
+    color: oklch(0.30 0.18 250);
   }
-
   .dark .toast-info {
-    background-color: oklch(0.20 0.05 250);
-    border-color: oklch(0.35 0.10 250);
-    color: oklch(0.75 0.12 250);
+    background-color: oklch(0.22 0.07 250);
+    border-color: oklch(0.50 0.18 250);
+    color: oklch(0.80 0.15 250);
   }
 
   /* Settings Dialog Styling */
