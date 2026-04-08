@@ -72,7 +72,7 @@ function CreateClubDialog({
           </div>
           <div className="space-y-1.5">
             <Label>隊長 / 負責人 <span className="text-red-500">*</span></Label>
-            <Input placeholder="例：炯文" value={leaderName} onChange={e => setLeaderName(e.target.value)} />
+            <Input placeholder="例：阿呆" value={leaderName} onChange={e => setLeaderName(e.target.value)} />
           </div>
           <div className="space-y-1.5">
             <Label>PIN 碼 <span className="text-red-500">*</span></Label>

@@ -3,6 +3,11 @@ import { redirect } from "next/navigation"
 import { InventoryDisplay } from "@/components/inventory-display"
 import { ClientWrapper } from "./client-wrapper"
 
+type GroupSummary = {
+  id: string
+  name: string
+}
+
 async function getInventoryData() {
   const supabase = await createClient()
 
@@ -38,8 +43,8 @@ async function getInventoryData() {
 
   const inventory = inventoryResult.data || []
   const records = pickupResult.data || []
-  // @ts-expect-error Supabase join returns object, not array
-  const group = Array.isArray(profile.groups) ? profile.groups[0] : profile.groups
+  const groups = profile.groups as GroupSummary | GroupSummary[] | null
+  const group = Array.isArray(groups) ? groups[0] : groups
 
   return {
     inventory: Array.isArray(inventory) ? inventory : [inventory],
