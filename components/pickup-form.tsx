@@ -31,11 +31,18 @@ interface ShuttlecockType {
   created_by?: string
 }
 
+function todayLocalISO() {
+  const d = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
 export function PickupForm({ onSuccess, disabled = false, initialTypes = [] }: PickupFormProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [name, setName] = useState("")
   const [quantity, setQuantity] = useState("1")
+  const [pickupDate, setPickupDate] = useState(todayLocalISO())
   const [types, setTypes] = useState<ShuttlecockType[]>(initialTypes)
   const [selectedTypeId, setSelectedTypeId] = useState<string>(initialTypes[0]?.id ?? "")
   const [error, setError] = useState<string | null>(null)
@@ -72,7 +79,8 @@ export function PickupForm({ onSuccess, disabled = false, initialTypes = [] }: P
         body: JSON.stringify({
           picker_name: name,
           quantity: parseInt(quantity, 10),
-          type_id: selectedTypeId
+          type_id: selectedTypeId,
+          pickup_date: pickupDate ? new Date(pickupDate).toISOString() : undefined,
         }),
       })
 
@@ -81,6 +89,7 @@ export function PickupForm({ onSuccess, disabled = false, initialTypes = [] }: P
       if (response.ok) {
         setName("")
         setQuantity("1")
+        setPickupDate(todayLocalISO())
         setOpen(false)
         onSuccess()
         showToast("登記成功", 'success')
@@ -150,6 +159,17 @@ export function PickupForm({ onSuccess, disabled = false, initialTypes = [] }: P
                         <option key={t.id} value={t.id}>{t.brand} {t.name}</option>
                     ))}
                 </select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="pickup-date" className="text-foreground font-bold">領取日期</Label>
+              <Input
+                id="pickup-date"
+                type="date"
+                value={pickupDate}
+                onChange={(e) => setPickupDate(e.target.value)}
+                required
+                className="h-12"
+              />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="name" className="text-foreground font-bold">領取人姓名</Label>

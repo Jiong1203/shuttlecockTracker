@@ -39,7 +39,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { picker_name, quantity, type_id } = await request.json()
+    const { picker_name, quantity, type_id, pickup_date } = await request.json()
 
     if (!picker_name || !quantity) {
       return NextResponse.json({ error: '缺少姓名或數量' }, { status: 400 })
@@ -55,6 +55,7 @@ export async function POST(request: Request) {
       p_quantity: quantity,
       p_group_id: groupId,
       p_type_id: type_id,
+      ...(pickup_date ? { p_pickup_date: pickup_date } : {}),
     })
 
     if (error) {
