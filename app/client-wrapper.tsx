@@ -3,19 +3,15 @@
 import dynamic from "next/dynamic"
 import { Suspense, useState } from "react"
 
-// 在 Client Component 中進行動態導入，這樣可以使用 ssr: false
-const HomeInteractive = dynamic(() => import("./home-interactive"), {
-  ssr: false
-})
+const HomeInteractive = dynamic(() => import("./home-interactive"))
 
-const HomeHeaderControls = dynamic(() => 
-  import("./home-interactive").then(mod => ({ default: mod.HomeHeaderControls })), {
-  ssr: false
-})
+const HomeHeaderControls = dynamic(() =>
+  import("./home-interactive").then(mod => ({ default: mod.HomeHeaderControls }))
+)
 
-const WelcomeGuide = dynamic(() => import("@/components/welcome-guide").then(mod => ({ default: mod.WelcomeGuide })), {
-  ssr: false
-})
+const WelcomeGuide = dynamic(() =>
+  import("@/components/welcome-guide").then(mod => ({ default: mod.WelcomeGuide }))
+)
 
 interface InventorySummary {
   shuttlecock_type_id: string;

@@ -5,50 +5,46 @@ import { ClientWrapper } from "./client-wrapper"
 
 async function getInventoryData() {
   const supabase = await createClient()
-  
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    redirect('/login')
-  }
 
-  // 取得使用者的 group_id
+  // middleware 已驗證過 token，這裡直接從 cookie 讀 session，省掉一次網路呼叫
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.user) redirect('/login')
+  const userId = session.user.id
+
+  // 取得 profile + group（合併為一次查詢）
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('group_id')
-    .eq('id', user.id)
+    .select('group_id, groups(id, name)')
+    .eq('id', userId)
     .single()
 
-  if (profileError || !profile?.group_id) {
-    redirect('/login')
-  }
+  if (profileError || !profile?.group_id) redirect('/login')
 
-  // 並行獲取數據
-  const [inventoryResult, pickupResult, groupResult] = await Promise.all([
+  const groupId = profile.group_id
+
+  // 並行獲取庫存與領取紀錄
+  const [inventoryResult, pickupResult] = await Promise.all([
     supabase
       .from('inventory_summary')
       .select('*')
-      .eq('group_id', profile.group_id),
+      .eq('group_id', groupId),
     supabase
       .from('pickup_records')
       .select('*, shuttlecock_types(brand, name)')
-      .eq('group_id', profile.group_id)
+      .eq('group_id', groupId)
       .order('created_at', { ascending: false })
       .limit(100),
-    supabase
-      .from('profiles')
-      .select('*, groups(*)')
-      .eq('id', user.id)
-      .single()
   ])
 
   const inventory = inventoryResult.data || []
   const records = pickupResult.data || []
-  const group = groupResult.data?.groups || null
+  // @ts-expect-error Supabase join returns object, not array
+  const group = Array.isArray(profile.groups) ? profile.groups[0] : profile.groups
 
   return {
     inventory: Array.isArray(inventory) ? inventory : [inventory],
     records,
-    group
+    group,
   }
 }
 
