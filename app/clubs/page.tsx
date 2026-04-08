@@ -13,7 +13,7 @@ import { ToastContainer, showToast } from "@/components/ui/toast"
 import { ThemeToggle } from "@/components/theme-toggle"
 import {
   ChevronLeft, Plus, Settings, Lock, Loader2, Users,
-  LogIn, ClipboardList,
+  LogIn, ClipboardList, BadgeCheck,
 } from "lucide-react"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -96,36 +96,58 @@ function CreateClubDialog({
 function ClubSettingsDialog({
   club, open, onOpenChange, onUpdated,
 }: { club: Club; open: boolean; onOpenChange: (v: boolean) => void; onUpdated: () => void }) {
+  const [step, setStep] = useState<1 | 2>(1)
+  const [verifiedPin, setVerifiedPin] = useState('')
+
+  // Step 1
+  const [pinInput, setPinInput] = useState('')
+  const [pinError, setPinError] = useState('')
+  const [verifyLoading, setVerifyLoading] = useState(false)
+
+  // Step 2
   const [name, setName] = useState(club.name)
   const [leaderName, setLeaderName] = useState(club.leader_name)
-  const [currentPin, setCurrentPin] = useState('')
   const [newPin, setNewPin] = useState('')
-  const [pinError, setPinError] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [saveLoading, setSaveLoading] = useState(false)
+
+  const reset = () => {
+    setStep(1)
+    setPinInput(''); setPinError(''); setVerifiedPin('')
+    setNewPin('')
+  }
 
   useEffect(() => {
     if (open) {
+      reset()
       setName(club.name)
       setLeaderName(club.leader_name)
-      setCurrentPin('')
-      setNewPin('')
-      setPinError('')
     }
-  }, [open, club])
+  }, [open, club]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleUpdate = async () => {
+  const handleVerify = async () => {
+    if (!pinInput.trim()) { setPinError('請輸入 PIN 碼'); return }
+    setVerifyLoading(true); setPinError('')
+    try {
+      const res = await fetch(`/api/clubs/${club.id}/verify-pin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: pinInput }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setPinError(data.error || 'PIN 碼錯誤'); return }
+      setVerifiedPin(pinInput)
+      setStep(2)
+    } finally { setVerifyLoading(false) }
+  }
+
+  const handleSave = async () => {
     const body: Record<string, string> = {}
     if (name.trim() && name !== club.name) body.name = name.trim()
     if (leaderName.trim() && leaderName !== club.leader_name) body.leaderName = leaderName.trim()
-    if (newPin.trim()) {
-      if (!currentPin.trim()) { setPinError('請輸入目前的 PIN 碼'); return }
-      body.pin = newPin.trim()
-      body.currentPin = currentPin.trim()
-    }
+    if (newPin.trim()) { body.pin = newPin.trim(); body.currentPin = verifiedPin }
     if (Object.keys(body).length === 0) { showToast('沒有變更內容', 'info'); return }
 
-    setLoading(true)
-    setPinError('')
+    setSaveLoading(true)
     try {
       const res = await fetch(`/api/clubs/${club.id}`, {
         method: 'PATCH',
@@ -133,60 +155,87 @@ function ClubSettingsDialog({
         body: JSON.stringify(body),
       })
       const data = await res.json()
-      if (!res.ok) {
-        if (res.status === 401) { setPinError(data.error); return }
-        throw new Error(data.error)
-      }
+      if (!res.ok) throw new Error(data.error)
       showToast('球團資訊已更新', 'success')
       onOpenChange(false); onUpdated()
     } catch (e) {
       showToast(e instanceof Error ? e.message : '更新失敗', 'error')
-    } finally { setLoading(false) }
+    } finally { setSaveLoading(false) }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) reset() }}>
       <DialogContent className="sm:max-w-[380px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Settings className="w-5 h-5" /> 球團設定
+            <Settings className="w-5 h-5" />
+            球團設定
+            {step === 2 && (
+              <span className="ml-auto text-xs font-normal text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                <BadgeCheck className="w-3.5 h-3.5" /> 已驗證
+              </span>
+            )}
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 py-2">
-          <div className="space-y-1.5">
-            <Label>球團名稱</Label>
-            <Input value={name} onChange={e => setName(e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>隊長 / 負責人</Label>
-            <Input value={leaderName} onChange={e => setLeaderName(e.target.value)} />
-          </div>
-          <div className="space-y-1.5 border-t border-border/60 pt-4">
-            <Label className="text-sm font-semibold">更換 PIN 碼（選填）</Label>
-            <div className="space-y-2">
-              <Input
-                type="password"
-                placeholder="目前 PIN 碼"
-                value={currentPin}
-                onChange={e => { setCurrentPin(e.target.value); setPinError('') }}
-              />
-              <Input
-                type="password"
-                placeholder="新 PIN 碼"
-                value={newPin}
-                onChange={e => { setNewPin(e.target.value); setPinError('') }}
-              />
-              {pinError && <p className="text-sm text-red-500">{pinError}</p>}
-              <p className="text-[11px] text-muted-foreground">需先輸入目前 PIN 碼才可設定新 PIN 碼</p>
+
+        {step === 1 ? (
+          <>
+            <div className="space-y-4 py-2">
+              <div className="text-center space-y-2 pb-2">
+                <div className="mx-auto w-11 h-11 rounded-full bg-muted flex items-center justify-center">
+                  <Lock className="w-5 h-5 text-muted-foreground" />
+                </div>
+                <p className="text-sm text-muted-foreground">請輸入「{club.name}」的 PIN 碼以繼續編輯</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label>PIN 碼</Label>
+                <Input
+                  type="password"
+                  placeholder="輸入 PIN"
+                  value={pinInput}
+                  autoFocus
+                  onChange={e => { setPinInput(e.target.value); setPinError('') }}
+                  onKeyDown={e => e.key === 'Enter' && handleVerify()}
+                />
+                {pinError && <p className="text-sm text-red-500">{pinError}</p>}
+              </div>
             </div>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={loading}>取消</Button>
-          <Button onClick={handleUpdate} disabled={loading} className="gap-2">
-            {loading && <Loader2 className="w-4 h-4 animate-spin" />}儲存
-          </Button>
-        </DialogFooter>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={verifyLoading}>取消</Button>
+              <Button onClick={handleVerify} disabled={verifyLoading || !pinInput} className="gap-2">
+                {verifyLoading && <Loader2 className="w-4 h-4 animate-spin" />}驗證並繼續
+              </Button>
+            </DialogFooter>
+          </>
+        ) : (
+          <>
+            <div className="space-y-4 py-2">
+              <div className="space-y-1.5">
+                <Label>球團名稱</Label>
+                <Input value={name} onChange={e => setName(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>隊長 / 負責人</Label>
+                <Input value={leaderName} onChange={e => setLeaderName(e.target.value)} />
+              </div>
+              <div className="space-y-1.5 border-t border-border/60 pt-3">
+                <Label>更換 PIN 碼 <span className="text-muted-foreground font-normal text-xs">（選填）</span></Label>
+                <Input
+                  type="password"
+                  placeholder="輸入新 PIN 碼"
+                  value={newPin}
+                  onChange={e => setNewPin(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setStep(1)} disabled={saveLoading}>返回</Button>
+              <Button onClick={handleSave} disabled={saveLoading} className="gap-2">
+                {saveLoading && <Loader2 className="w-4 h-4 animate-spin" />}儲存
+              </Button>
+            </DialogFooter>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   )
