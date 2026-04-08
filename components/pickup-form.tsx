@@ -18,6 +18,7 @@ import { showToast } from "@/components/ui/toast"
 interface PickupFormProps {
   onSuccess: () => void
   disabled?: boolean
+  initialTypes?: ShuttlecockType[]
 }
 
 interface ShuttlecockType {
@@ -30,13 +31,13 @@ interface ShuttlecockType {
   created_by?: string
 }
 
-export function PickupForm({ onSuccess, disabled = false }: PickupFormProps) {
+export function PickupForm({ onSuccess, disabled = false, initialTypes = [] }: PickupFormProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [name, setName] = useState("")
   const [quantity, setQuantity] = useState("1")
-  const [types, setTypes] = useState<ShuttlecockType[]>([])
-  const [selectedTypeId, setSelectedTypeId] = useState<string>("")
+  const [types, setTypes] = useState<ShuttlecockType[]>(initialTypes)
+  const [selectedTypeId, setSelectedTypeId] = useState<string>(initialTypes[0]?.id ?? "")
   const [error, setError] = useState<string | null>(null)
 
   const fetchTypes = async () => {

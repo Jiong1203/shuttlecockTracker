@@ -11,27 +11,27 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { 
-  Package, 
-  History, 
-  PlusCircle, 
-  Archive, 
-  Loader2, 
-  CheckCircle2, 
+import {
+  Package,
+  History,
+  PlusCircle,
+  Archive,
+  Loader2,
+  CheckCircle2,
   Lock,
   PackagePlus,
-  Settings2
+  Settings2,
+  PartyPopper
 } from "lucide-react"
 import { ShuttlecockTypeManager } from "./shuttlecock-type-manager"
-import { showToast } from "@/components/ui/toast"
 
 interface InventoryManagerDialogProps {
-  // We can pass initial data if we want, but fetching fresh inside might be safer for consistency
   trigger?: React.ReactNode
   onUpdate?: () => void
   open?: boolean
   onOpenChange?: (open: boolean) => void
   initialTab?: 'overview' | 'restock' | 'history' | 'types'
+  initialTypes?: ShuttlecockType[]
 }
 
 interface InventoryItem {
@@ -62,7 +62,7 @@ interface ShuttlecockType {
   is_active: boolean
 }
 
-export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen, onOpenChange, initialTab = 'overview' }: InventoryManagerDialogProps) {
+export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen, onOpenChange, initialTab = 'overview', initialTypes = [] }: InventoryManagerDialogProps) {
   const [internalOpen, setInternalOpen] = useState(false)
   const isOpen = controlledOpen ?? internalOpen
   const setIsOpen = onOpenChange ?? setInternalOpen
@@ -78,14 +78,15 @@ export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen
   const [step, setStep] = useState<1 | 2 | 3>(1) 
   const [restockPassword, setRestockPassword] = useState("")
   const [hasRestockPassword, setHasRestockPassword] = useState(false)
-  const [types, setTypes] = useState<ShuttlecockType[]>([])
+  const [types, setTypes] = useState<ShuttlecockType[]>(initialTypes)
   const [typesLoading, setTypesLoading] = useState(false)
-  const [selectedTypeId, setSelectedTypeId] = useState("")
+  const [selectedTypeId, setSelectedTypeId] = useState(initialTypes[0]?.id ?? "")
   const [amount, setAmount] = useState("10")
   const [unitPrice, setUnitPrice] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [formLoading, setFormLoading] = useState(false)
   const [lastVerifiedAt, setLastVerifiedAt] = useState<number | null>(null)
+  const [successInfo, setSuccessInfo] = useState<{ brand: string; name: string; amount: string } | null>(null)
 
   const VERIFICATION_TIMEOUT = 5 * 60 * 1000 // 5 minutes
 
@@ -223,17 +224,17 @@ export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen
         })
         const data = await res.json()
         if (res.ok) {
-            // Success - 更新內部資料但保持對話框開啟
             const typeName = types.find(t => t.id === selectedTypeId)
-            showToast(`已入庫 ${amount} 桶 ${typeName?.brand || ''} ${typeName?.name || ''}`, 'success')
-            setStep(2) // 返回步驟 2 方便繼續入庫
+            setSuccessInfo({
+                brand: typeName?.brand ?? '',
+                name: typeName?.name ?? '',
+                amount,
+            })
             setAmount("10")
             setUnitPrice("")
-            setLastVerifiedAt(Date.now()) 
-            // 更新對話框內部資料
+            setLastVerifiedAt(Date.now())
             fetchInventory()
             fetchHistory()
-            // 不呼叫 onUpdate?.()，避免關閉對話框
         } else {
             setError(data.error)
             if (res.status === 401) {
@@ -263,6 +264,7 @@ export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen
         setAmount("10")
         setUnitPrice("")
         setError(null)
+        setSuccessInfo(null)
     }
   }
 
@@ -348,9 +350,33 @@ export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen
 
             {activeTab === 'restock' && (
                 <div className="max-w-md mx-auto py-4">
-                  {typesLoading ? (
-                    <div className="flex justify-center p-8"><Loader2 className="animate-spin text-muted-foreground" /></div>
-                  ) : types.length === 0 ? (
+                  {successInfo ? (
+                    <div className="flex flex-col items-center justify-center space-y-6 py-8 text-center animate-in fade-in zoom-in-95 duration-300">
+                      <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center">
+                        <PartyPopper className="w-10 h-10 text-emerald-600" />
+                      </div>
+                      <div className="space-y-1">
+                        <h3 className="text-xl font-bold text-emerald-600">入庫成功！</h3>
+                        <p className="text-muted-foreground text-sm">以下入庫紀錄已儲存</p>
+                      </div>
+                      <div className="w-full bg-muted/50 rounded-xl border border-border p-5 space-y-3 text-left">
+                        <div>
+                          <p className="text-xs text-muted-foreground">球種</p>
+                          <p className="text-lg font-bold">{successInfo.brand} {successInfo.name}</p>
+                        </div>
+                        <div className="border-t border-border/50 pt-3">
+                          <p className="text-xs text-muted-foreground">數量</p>
+                          <p className="text-2xl font-black text-foreground">{successInfo.amount} <span className="text-sm font-normal">桶</span></p>
+                        </div>
+                      </div>
+                      <Button
+                        className="w-full h-12 text-base font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
+                        onClick={() => { setSuccessInfo(null); setStep(2) }}
+                      >
+                        確認
+                      </Button>
+                    </div>
+                  ) : !typesLoading && types.length === 0 ? (
                     <div className="flex flex-col items-center justify-center space-y-4 py-8 text-center animate-in fade-in zoom-in-95 duration-300">
                       <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center">
                         <PackagePlus className="w-8 h-8 text-muted-foreground/50" />

@@ -126,6 +126,13 @@ export default function HomeInteractive({
     router.refresh()
   }
 
+  const derivedTypes = inventory.map(item => ({
+    id: item.shuttlecock_type_id,
+    brand: item.brand,
+    name: item.name,
+    is_active: item.is_active,
+  }))
+
   if (variant === 'header') {
     return <HomeHeaderControls groupName={groupName} />
   }
@@ -133,13 +140,14 @@ export default function HomeInteractive({
   return (
     <>
       <div className="flex flex-row justify-center items-center gap-3 w-full max-w-2xl mx-auto">
-        <PickupForm onSuccess={refreshData} disabled={totalCurrentStock === 0} />
+        <PickupForm onSuccess={refreshData} disabled={totalCurrentStock === 0} initialTypes={derivedTypes} />
         <SettlementDialog records={records} types={inventory} />
         <InventoryManagerDialog
           open={inventoryManagerOpen}
           onOpenChange={setInventoryManagerOpen}
           onUpdate={refreshData}
           initialTab="overview"
+          initialTypes={derivedTypes}
         />
       </div>
       <div className="w-full max-w-2xl mx-auto">
