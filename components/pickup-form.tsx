@@ -26,7 +26,7 @@ interface ShuttlecockType {
   brand: string
   name: string
   is_active: boolean
-  group_id: string
+  group_id?: string
   created_at?: string
   created_by?: string
 }
