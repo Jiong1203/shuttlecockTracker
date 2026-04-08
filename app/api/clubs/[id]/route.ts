@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getGroupId } from '@/lib/supabase/helpers'
-import { hashPin } from '@/lib/crypto'
+import { hashPin, verifyPin } from '@/lib/crypto'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,17 +37,26 @@ export async function PATCH(
   if (!groupId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
-  const { name, leaderName, pin } = await request.json()
+  const { name, leaderName, pin, currentPin } = await request.json()
 
   // 確認 club 屬於此 group
   const { data: club, error: fetchError } = await supabase
     .from('clubs')
-    .select('id')
+    .select('id, pin_hash')
     .eq('id', id)
     .eq('group_id', groupId)
     .single()
 
   if (fetchError || !club) return NextResponse.json({ error: '找不到此球團' }, { status: 404 })
+
+  // 若要更換 PIN，必須先驗證原 PIN
+  if (pin?.trim()) {
+    if (!currentPin?.trim()) {
+      return NextResponse.json({ error: '請輸入目前的 PIN 碼' }, { status: 400 })
+    }
+    const valid = await verifyPin(currentPin, club.pin_hash)
+    if (!valid) return NextResponse.json({ error: '目前 PIN 碼錯誤' }, { status: 401 })
+  }
 
   const updates: Record<string, string> = {}
   if (name?.trim()) updates.name = name.trim()

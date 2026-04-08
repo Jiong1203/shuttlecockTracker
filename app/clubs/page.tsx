@@ -98,21 +98,34 @@ function ClubSettingsDialog({
 }: { club: Club; open: boolean; onOpenChange: (v: boolean) => void; onUpdated: () => void }) {
   const [name, setName] = useState(club.name)
   const [leaderName, setLeaderName] = useState(club.leader_name)
-  const [pin, setPin] = useState('')
+  const [currentPin, setCurrentPin] = useState('')
+  const [newPin, setNewPin] = useState('')
+  const [pinError, setPinError] = useState('')
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if (open) { setName(club.name); setLeaderName(club.leader_name); setPin('') }
+    if (open) {
+      setName(club.name)
+      setLeaderName(club.leader_name)
+      setCurrentPin('')
+      setNewPin('')
+      setPinError('')
+    }
   }, [open, club])
 
   const handleUpdate = async () => {
     const body: Record<string, string> = {}
     if (name.trim() && name !== club.name) body.name = name.trim()
     if (leaderName.trim() && leaderName !== club.leader_name) body.leaderName = leaderName.trim()
-    if (pin.trim()) body.pin = pin.trim()
+    if (newPin.trim()) {
+      if (!currentPin.trim()) { setPinError('請輸入目前的 PIN 碼'); return }
+      body.pin = newPin.trim()
+      body.currentPin = currentPin.trim()
+    }
     if (Object.keys(body).length === 0) { showToast('沒有變更內容', 'info'); return }
 
     setLoading(true)
+    setPinError('')
     try {
       const res = await fetch(`/api/clubs/${club.id}`, {
         method: 'PATCH',
@@ -120,7 +133,10 @@ function ClubSettingsDialog({
         body: JSON.stringify(body),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
+      if (!res.ok) {
+        if (res.status === 401) { setPinError(data.error); return }
+        throw new Error(data.error)
+      }
       showToast('球團資訊已更新', 'success')
       onOpenChange(false); onUpdated()
     } catch (e) {
@@ -145,9 +161,24 @@ function ClubSettingsDialog({
             <Label>隊長 / 負責人</Label>
             <Input value={leaderName} onChange={e => setLeaderName(e.target.value)} />
           </div>
-          <div className="space-y-1.5">
-            <Label>更換 PIN 碼（選填，不填則不變更）</Label>
-            <Input type="password" placeholder="輸入新 PIN" value={pin} onChange={e => setPin(e.target.value)} />
+          <div className="space-y-1.5 border-t border-border/60 pt-4">
+            <Label className="text-sm font-semibold">更換 PIN 碼（選填）</Label>
+            <div className="space-y-2">
+              <Input
+                type="password"
+                placeholder="目前 PIN 碼"
+                value={currentPin}
+                onChange={e => { setCurrentPin(e.target.value); setPinError('') }}
+              />
+              <Input
+                type="password"
+                placeholder="新 PIN 碼"
+                value={newPin}
+                onChange={e => { setNewPin(e.target.value); setPinError('') }}
+              />
+              {pinError && <p className="text-sm text-red-500">{pinError}</p>}
+              <p className="text-[11px] text-muted-foreground">需先輸入目前 PIN 碼才可設定新 PIN 碼</p>
+            </div>
           </div>
         </div>
         <DialogFooter>
