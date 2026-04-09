@@ -412,7 +412,7 @@ function PinGate({ clubId, clubName, onVerified }: { clubId: string; clubName: s
               <Lock className="w-7 h-7 text-blue-600 dark:text-blue-400" />
             </div>
             <h2 className="text-xl font-black text-foreground">進入 {clubName}</h2>
-            <p className="text-sm text-muted-foreground">請輸入球團 PIN 碼以進入</p>
+            <p className="text-sm text-muted-foreground">請輸入球隊 PIN 碼以進入</p>
           </div>
           <div className="space-y-3">
             <Input
@@ -428,7 +428,7 @@ function PinGate({ clubId, clubName, onVerified }: { clubId: string; clubName: s
           </div>
           <div className="text-center">
             <Link href="/clubs" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              ← 返回球團清單
+              ← 返回球隊清單
             </Link>
           </div>
         </div>
@@ -498,7 +498,7 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
   if (!verified) {
     return (
       <>
-        <PinGate clubId={clubId} clubName={club?.name ?? '球團'} onVerified={() => setVerified(true)} />
+        <PinGate clubId={clubId} clubName={club?.name ?? '球隊'} onVerified={() => setVerified(true)} />
         <ToastContainer />
       </>
     )
@@ -515,7 +515,7 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
         <div className="max-w-5xl mx-auto px-4 md:px-8 h-14 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Link href="/clubs" className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm">
-              <ChevronLeft className="w-4 h-4" /> 球團清單
+              <ChevronLeft className="w-4 h-4" /> 球隊清單
             </Link>
             <span className="text-border">|</span>
             <div className="flex items-center gap-2 font-semibold">

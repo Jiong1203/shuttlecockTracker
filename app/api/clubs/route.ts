@@ -29,7 +29,7 @@ export async function POST(request: Request) {
 
   const { name, leaderName, pin } = await request.json()
 
-  if (!name?.trim()) return NextResponse.json({ error: '請輸入球團名稱' }, { status: 400 })
+  if (!name?.trim()) return NextResponse.json({ error: '請輸入球隊名稱' }, { status: 400 })
   if (!leaderName?.trim()) return NextResponse.json({ error: '請輸入隊長姓名' }, { status: 400 })
   if (!pin?.trim()) return NextResponse.json({ error: '請設定 PIN 碼' }, { status: 400 })
 

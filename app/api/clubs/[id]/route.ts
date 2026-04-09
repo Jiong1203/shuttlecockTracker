@@ -23,7 +23,7 @@ export async function GET(
     .eq('group_id', groupId)
     .single()
 
-  if (error || !data) return NextResponse.json({ error: '找不到此球團' }, { status: 404 })
+  if (error || !data) return NextResponse.json({ error: '找不到此球隊' }, { status: 404 })
   return NextResponse.json(data)
 }
 
@@ -47,7 +47,7 @@ export async function PATCH(
     .eq('group_id', groupId)
     .single()
 
-  if (fetchError || !club) return NextResponse.json({ error: '找不到此球團' }, { status: 404 })
+  if (fetchError || !club) return NextResponse.json({ error: '找不到此球隊' }, { status: 404 })
 
   // 若要更換 PIN，必須先驗證原 PIN
   if (pin?.trim()) {

@@ -26,7 +26,7 @@ export async function POST(
     .eq('group_id', groupId)
     .single()
 
-  if (error || !club) return NextResponse.json({ error: '找不到此球團' }, { status: 404 })
+  if (error || !club) return NextResponse.json({ error: '找不到此球隊' }, { status: 404 })
 
   const valid = await verifyPin(pin, club.pin_hash)
   if (!valid) return NextResponse.json({ error: 'PIN 碼錯誤' }, { status: 401 })

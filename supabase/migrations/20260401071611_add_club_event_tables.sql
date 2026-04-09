@@ -2,7 +2,7 @@
 -- Migration: 2026-04-01 add club/event/attendee tables for 開團紀錄 module
 -- ==========================================
 
--- 球團（隸屬於 group，使用 PIN 進行二次驗證）
+-- 球隊（隸屬於 group，使用 PIN 進行二次驗證）
 CREATE TABLE public.clubs (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   group_id     UUID NOT NULL REFERENCES public.groups(id) ON DELETE CASCADE,

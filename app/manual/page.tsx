@@ -1,6 +1,7 @@
 import fs from "fs"
 import path from "path"
 import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 import { BookOpen } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 
@@ -76,14 +77,16 @@ export default async function ManualPage() {
                 prose-p:leading-relaxed prose-p:my-3 prose-p:text-foreground/90
                 prose-li:my-1 prose-li:leading-relaxed prose-li:text-foreground/90
                 prose-strong:text-foreground prose-strong:font-semibold
-                prose-table:text-sm prose-th:text-left prose-th:font-semibold prose-th:text-foreground prose-td:text-foreground/90
+                prose-table:text-sm prose-table:w-full prose-table:border-collapse
+                prose-th:text-left prose-th:font-semibold prose-th:text-foreground prose-th:bg-muted/50 prose-th:px-4 prose-th:py-2 prose-th:border prose-th:border-border
+                prose-td:text-foreground/90 prose-td:px-4 prose-td:py-2 prose-td:border prose-td:border-border
                 prose-code:text-sm prose-code:bg-muted prose-code:text-foreground prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:border prose-code:border-border
                 prose-pre:bg-muted prose-pre:text-foreground prose-pre:text-sm prose-pre:p-4 prose-pre:rounded-xl prose-pre:border prose-pre:border-border
                 prose-blockquote:text-muted-foreground prose-blockquote:border-l-4 prose-blockquote:border-blue-500/50 prose-blockquote:bg-muted/40 prose-blockquote:pl-4 prose-blockquote:py-2.5 prose-blockquote:rounded-r-lg prose-blockquote:text-sm prose-blockquote:not-italic
                 prose-a:text-blue-500 dark:prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline
                 prose-hr:border-border/60 prose-hr:my-6
                 prose-ul:pl-6 prose-ol:pl-6">
-                <ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
                   {block.content}
                 </ReactMarkdown>
               </div>

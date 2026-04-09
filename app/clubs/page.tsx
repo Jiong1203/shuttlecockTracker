@@ -50,7 +50,7 @@ function CreateClubDialog({
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
-      showToast('球團建立成功', 'success')
+      showToast('球隊建立成功', 'success')
       onOpenChange(false); reset(); onCreated()
     } catch (e) {
       showToast(e instanceof Error ? e.message : '建立失敗', 'error')
@@ -62,12 +62,12 @@ function CreateClubDialog({
       <DialogContent className="sm:max-w-[380px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Users className="w-5 h-5 text-blue-600" /> 新增球團
+            <Users className="w-5 h-5 text-blue-600" /> 新增球隊
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-1.5">
-            <Label>球團名稱 <span className="text-red-500">*</span></Label>
+            <Label>球隊名稱 <span className="text-red-500">*</span></Label>
             <Input placeholder="例：瘋羽無懼" value={name} onChange={e => setName(e.target.value)} />
           </div>
           <div className="space-y-1.5">
@@ -77,13 +77,13 @@ function CreateClubDialog({
           <div className="space-y-1.5">
             <Label>PIN 碼 <span className="text-red-500">*</span></Label>
             <Input type="password" placeholder="設定登入 PIN" value={pin} onChange={e => setPin(e.target.value)} />
-            <p className="text-[11px] text-muted-foreground">此 PIN 為球團負責人專用，請妥善保管</p>
+            <p className="text-[11px] text-muted-foreground">此 PIN 為球隊負責人專用，請妥善保管</p>
           </div>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => { onOpenChange(false); reset() }} disabled={loading}>取消</Button>
           <Button onClick={handleCreate} disabled={loading} className="gap-2">
-            {loading && <Loader2 className="w-4 h-4 animate-spin" />}建立球團
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}建立球隊
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -122,7 +122,7 @@ function ClubSettingsDialog({
       setName(club.name)
       setLeaderName(club.leader_name)
     }
-  }, [open, club]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, club])  
 
   const handleVerify = async () => {
     if (!pinInput.trim()) { setPinError('請輸入 PIN 碼'); return }
@@ -156,7 +156,7 @@ function ClubSettingsDialog({
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
-      showToast('球團資訊已更新', 'success')
+      showToast('球隊資訊已更新', 'success')
       onOpenChange(false); onUpdated()
     } catch (e) {
       showToast(e instanceof Error ? e.message : '更新失敗', 'error')
@@ -169,7 +169,7 @@ function ClubSettingsDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Settings className="w-5 h-5" />
-            球團設定
+            球隊設定
             {step === 2 && (
               <span className="ml-auto text-xs font-normal text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                 <BadgeCheck className="w-3.5 h-3.5" /> 已驗證
@@ -211,7 +211,7 @@ function ClubSettingsDialog({
           <>
             <div className="space-y-4 py-2">
               <div className="space-y-1.5">
-                <Label>球團名稱</Label>
+                <Label>球隊名稱</Label>
                 <Input value={name} onChange={e => setName(e.target.value)} />
               </div>
               <div className="space-y-1.5">
@@ -352,11 +352,11 @@ export default function ClubsPage() {
         {/* Title row */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-black text-foreground">球團管理</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">管理球團清單，進入後可查看活動紀錄與利潤</p>
+            <h1 className="text-xl font-black text-foreground">球隊管理</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">管理球隊清單，進入後可查看活動紀錄與利潤</p>
           </div>
           <Button onClick={() => setCreateOpen(true)} className="gap-2">
-            <Plus className="w-4 h-4" /> 新增球團
+            <Plus className="w-4 h-4" /> 新增球隊
           </Button>
         </div>
 
@@ -364,7 +364,7 @@ export default function ClubsPage() {
         <div className="rounded-xl border bg-card overflow-hidden shadow-sm">
           {/* Table Header — desktop only */}
           <div className="hidden md:grid grid-cols-[1fr_160px_140px_130px] gap-4 px-5 py-3 bg-muted/40 border-b text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-            <span>球團名稱</span>
+            <span>球隊名稱</span>
             <span>隊長 / 負責人</span>
             <span>建立日期</span>
             <span className="text-right">操作</span>
@@ -378,7 +378,7 @@ export default function ClubsPage() {
           ) : clubs.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 space-y-3 text-muted-foreground">
               <Users className="w-12 h-12 opacity-20" />
-              <p className="text-sm">尚無球團，點擊「新增球團」開始建立</p>
+              <p className="text-sm">尚無球隊，點擊「新增球隊」開始建立</p>
             </div>
           ) : (
             clubs.map((club, i) => (
@@ -426,7 +426,7 @@ export default function ClubsPage() {
 
         {clubs.length > 0 && (
           <p className="text-xs text-muted-foreground text-center">
-            共 {clubs.length} 個球團 · 點擊「進入」後輸入 PIN 碼即可查看活動紀錄
+            共 {clubs.length} 個球隊 · 點擊「進入」後輸入 PIN 碼即可查看活動紀錄
           </p>
         )}
       </div>

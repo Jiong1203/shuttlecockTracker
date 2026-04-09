@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     .eq('group_id', groupId)
     .single()
 
-  if (!club) return NextResponse.json({ error: '找不到此球團' }, { status: 404 })
+  if (!club) return NextResponse.json({ error: '找不到此球隊' }, { status: 404 })
 
   let query = supabase
     .from('badminton_events')
@@ -80,7 +80,7 @@ export async function POST(request: Request) {
     .eq('group_id', groupId)
     .single()
 
-  if (!club) return NextResponse.json({ error: '找不到此球團' }, { status: 404 })
+  if (!club) return NextResponse.json({ error: '找不到此球隊' }, { status: 404 })
 
   const { data, error } = await supabase
     .from('badminton_events')

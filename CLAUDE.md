@@ -120,7 +120,7 @@ supabase db push                        # push to linked project
 ## 開團紀錄模組（Club Event Tracker）
 
 ### Architecture
-- One group can have multiple clubs (球團); each club is PIN-protected
+- One group can have multiple clubs (球隊); each club is PIN-protected
 - PIN uses the same PBKDF2 hashing as restock PIN (`lib/crypto.ts`)
 - PIN verification state stored in `sessionStorage` (`club_verified_<id>`) — cleared on tab close
 
