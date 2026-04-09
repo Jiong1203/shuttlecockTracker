@@ -12,6 +12,7 @@ import { InventoryManagerDialog } from "@/components/inventory-manager-dialog"
 import { PickupHistory } from "@/components/pickup-history"
 import { ToastContainer } from "@/components/ui/toast"
 import { LogOut, Loader2, BookOpen } from "lucide-react"
+import { Tooltip } from "@/components/ui/tooltip"
 import { EventTrackerDialog } from "@/components/event-tracker-dialog"
 
 interface InventorySummary {
@@ -67,43 +68,62 @@ export function HomeHeaderControls({ groupName }: { groupName: string }) {
   }
 
   return (
-    <div className="flex items-center gap-2 bg-muted/40 p-1.5 rounded-xl border border-border/50">
-      <Button
-        variant="ghost"
-        size="sm"
-        asChild
-        className="text-muted-foreground hover:text-foreground hover:bg-muted gap-2 transition-all px-2 md:px-3"
-      >
-        <a href="/manual" target="_blank" rel="noopener noreferrer">
-          <BookOpen className="w-4 h-4" />
-          <span className="hidden md:inline">使用手冊</span>
-        </a>
-      </Button>
-      <EventTrackerDialog />
-      <ThemeToggle />
-      <GroupSettingsDialog
-        currentGroupName={group?.name || ""} 
-        onUpdateSuccess={(newName) => {
-          if (newName) {
-            setGroup(prev => prev ? { ...prev, name: newName } : null)
-          }
-          refreshData()
-        }} 
-      />
-      <Button 
-        variant="ghost" 
-        size="sm" 
-        onClick={handleLogout}
-        disabled={loggingOut}
-        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-2 transition-all px-2 md:px-3"
-      >
-        {loggingOut ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
-        ) : (
-          <LogOut className="w-4 h-4" />
-        )}
-        <span className="hidden md:inline">{loggingOut ? '登出中...' : '登出系統'}</span>
-      </Button>
+    <div className="flex items-center gap-0.5 shrink-0">
+      {/* 開團紀錄 */}
+      <Tooltip label="開團紀錄">
+        <EventTrackerDialog />
+      </Tooltip>
+
+      {/* 操作手冊 */}
+      <Tooltip label="操作手冊">
+        <Button
+          variant="ghost"
+          size="icon"
+          asChild
+          className="w-9 h-9 text-muted-foreground hover:text-foreground"
+        >
+          <a href="/manual" target="_blank" rel="noopener noreferrer">
+            <BookOpen className="w-4 h-4" />
+          </a>
+        </Button>
+      </Tooltip>
+
+      {/* 帳號設定 */}
+      <Tooltip label="帳號設定">
+        <GroupSettingsDialog
+          currentGroupName={group?.name || ""}
+          onUpdateSuccess={(newName) => {
+            if (newName) {
+              setGroup(prev => prev ? { ...prev, name: newName } : null)
+            }
+            refreshData()
+          }}
+        />
+      </Tooltip>
+
+      <div className="w-px h-5 bg-border mx-1" />
+
+      {/* 登出 */}
+      <Tooltip label="登出">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleLogout}
+          disabled={loggingOut}
+          className="w-9 h-9 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
+        >
+          {loggingOut ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <LogOut className="w-4 h-4" />
+          )}
+        </Button>
+      </Tooltip>
+
+      {/* 主題切換 */}
+      <Tooltip label="切換主題">
+        <ThemeToggle />
+      </Tooltip>
     </div>
   )
 }
