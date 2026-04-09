@@ -35,7 +35,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { start_date, end_date, picker_name, shuttlecock_type_id } = await request.json()
+    const { start_date, end_date, picker_names, shuttlecock_type_ids } = await request.json()
+    const pickerNames: string[] = Array.isArray(picker_names) ? picker_names : []
+    const typeIds_filter: string[] = Array.isArray(shuttlecock_type_ids) ? shuttlecock_type_ids : []
 
     // 1. 獲取所有入庫紀錄 (依時間排序)
     const { data: restocks, error: restockError } = await supabase
@@ -60,8 +62,8 @@ export async function POST(request: Request) {
     let typeIds = Array.from(new Set((restocks as RestockRecord[]).map(r => r.shuttlecock_type_id)));
     
     // 如果有指定球種，則過濾
-    if (shuttlecock_type_id) {
-        typeIds = typeIds.filter(id => id === shuttlecock_type_id);
+    if (typeIds_filter.length > 0) {
+        typeIds = typeIds.filter(id => typeIds_filter.includes(id));
     }
     
     // 結果物件
@@ -95,7 +97,7 @@ export async function POST(request: Request) {
             // 判斷該領取是否在查詢區間內，且符合姓名篩選
             const isWithinPeriod = (!start_date || new Date(pickup.created_at) >= new Date(start_date)) &&
                                    (!end_date || new Date(pickup.created_at) < new Date(new Date(end_date).getTime() + 86400000)) &&
-                                   (!picker_name || pickup.picker_name.includes(picker_name));
+                                   (pickerNames.length === 0 || pickerNames.includes(pickup.picker_name));
 
             while (quantityToPick > 0) {
                 // 找最早且還有剩餘的批次
