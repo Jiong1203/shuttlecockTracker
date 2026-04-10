@@ -98,7 +98,7 @@ export function PickupHistory({ records, onDelete }: PickupHistoryProps) {
                   </TableCell>
                   <TableCell className="text-right text-foreground font-semibold">{record.quantity} 桶</TableCell>
                   <TableCell className="text-right text-muted-foreground text-xs">
-                    {format(new Date(record.created_at), 'MM/dd HH:mm', { locale: zhTW })}
+                    {format(new Date(record.created_at), 'MM/dd', { locale: zhTW })}
                   </TableCell>
                   <TableCell className="text-center">
                     <Button 
