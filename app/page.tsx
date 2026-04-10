@@ -66,15 +66,14 @@ export default async function Home() {
           {/* 左側：品牌 + 球團名稱 */}
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <div className="flex items-center gap-2 shrink-0">
-              <h1 className="hidden sm:block text-sm font-black tracking-tight text-foreground whitespace-nowrap">羽球庫存共享小幫手</h1>
-              <h1 className="sm:hidden text-sm font-black tracking-tight text-foreground whitespace-nowrap">羽球庫存</h1>
+              <h1 className="text-sm font-black tracking-tight text-foreground whitespace-nowrap">羽球庫存共享小幫手</h1>
               <span className="bg-blue-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full tracking-wider uppercase">Beta</span>
             </div>
 
             {group && (
               <>
-                <div className="w-px h-4 bg-border shrink-0" />
-                <span className="flex items-center gap-1.5 min-w-0">
+                <div className="hidden sm:block w-px h-4 bg-border shrink-0" />
+                <span className="hidden sm:flex items-center gap-1.5 min-w-0">
                   <span className="bg-blue-600 dark:bg-blue-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md tracking-widest uppercase shrink-0">球團</span>
                   <span className="text-sm font-semibold text-blue-600 dark:text-blue-300 truncate">{group.name}</span>
                 </span>

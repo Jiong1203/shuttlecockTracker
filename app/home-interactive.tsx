@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { GroupSettingsDialog } from "@/components/group-settings-dialog"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -11,9 +12,16 @@ import { SettlementDialog } from "@/components/settlement-dialog"
 import { InventoryManagerDialog } from "@/components/inventory-manager-dialog"
 import { PickupHistory } from "@/components/pickup-history"
 import { ToastContainer } from "@/components/ui/toast"
-import { LogOut, Loader2, BookOpen } from "lucide-react"
+import { LogOut, Loader2, BookOpen, ClipboardList, Settings, Menu } from "lucide-react"
 import { Tooltip } from "@/components/ui/tooltip"
 import { EventTrackerDialog } from "@/components/event-tracker-dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 interface InventorySummary {
   shuttlecock_type_id: string;
@@ -49,6 +57,7 @@ interface HomeInteractiveProps {
 export function HomeHeaderControls({ groupName }: { groupName: string }) {
   const [group, setGroup] = useState<{ name: string } | null>(groupName ? { name: groupName } : null)
   const [loggingOut, setLoggingOut] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const supabase = createClient()
   const router = useRouter()
 
@@ -69,29 +78,112 @@ export function HomeHeaderControls({ groupName }: { groupName: string }) {
 
   return (
     <div className="flex items-center gap-0.5 shrink-0">
-      {/* 開團紀錄 */}
-      <Tooltip label="開團紀錄">
-        <EventTrackerDialog />
-      </Tooltip>
+      {/* 桌面版：個別按鈕 */}
+      <div className="hidden sm:flex items-center gap-0.5">
+        {/* 開團紀錄 */}
+        <Tooltip label="開團紀錄">
+          <EventTrackerDialog />
+        </Tooltip>
 
-      {/* 操作手冊 */}
-      <Tooltip label="操作手冊">
-        <Button
-          variant="ghost"
-          size="icon"
-          asChild
-          className="w-9 h-9 text-muted-foreground hover:text-foreground"
-        >
-          <a href="/manual" target="_blank" rel="noopener noreferrer">
-            <BookOpen className="w-4 h-4" />
-          </a>
-        </Button>
-      </Tooltip>
+        {/* 操作手冊 */}
+        <Tooltip label="操作手冊">
+          <Button
+            variant="ghost"
+            size="icon"
+            asChild
+            className="w-9 h-9 text-muted-foreground hover:text-foreground"
+          >
+            <a href="/manual" target="_blank" rel="noopener noreferrer">
+              <BookOpen className="w-4 h-4" />
+            </a>
+          </Button>
+        </Tooltip>
 
-      {/* 帳號設定 */}
-      <Tooltip label="帳號設定">
+        {/* 帳號設定 */}
+        <Tooltip label="帳號設定">
+          <GroupSettingsDialog
+            currentGroupName={group?.name || ""}
+            onUpdateSuccess={(newName) => {
+              if (newName) {
+                setGroup(prev => prev ? { ...prev, name: newName } : null)
+              }
+              refreshData()
+            }}
+          />
+        </Tooltip>
+
+        <div className="w-px h-5 bg-border mx-1" />
+
+        {/* 登出 */}
+        <Tooltip label="登出">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleLogout}
+            disabled={loggingOut}
+            className="w-9 h-9 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
+          >
+            {loggingOut ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <LogOut className="w-4 h-4" />
+            )}
+          </Button>
+        </Tooltip>
+      </div>
+
+      {/* 手機版：下拉選單 */}
+      <div className="flex sm:hidden items-center">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="w-9 h-9 text-muted-foreground hover:text-foreground">
+              <Menu className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuItem asChild>
+              <Link href="/clubs" className="flex items-center gap-2 cursor-pointer">
+                <ClipboardList className="w-4 h-4" />
+                開團紀錄
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <a href="/manual" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 cursor-pointer">
+                <BookOpen className="w-4 h-4" />
+                操作手冊
+              </a>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="flex items-center gap-2 cursor-pointer"
+              onSelect={(e) => {
+                e.preventDefault()
+                setSettingsOpen(true)
+              }}
+            >
+              <Settings className="w-4 h-4" />
+              帳號設定
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="flex items-center gap-2 cursor-pointer text-destructive focus:text-destructive"
+              onSelect={handleLogout}
+              disabled={loggingOut}
+            >
+              {loggingOut ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <LogOut className="w-4 h-4" />
+              )}
+              登出
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* 隱藏的 GroupSettingsDialog（受控模式，由下拉選單觸發） */}
         <GroupSettingsDialog
           currentGroupName={group?.name || ""}
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
           onUpdateSuccess={(newName) => {
             if (newName) {
               setGroup(prev => prev ? { ...prev, name: newName } : null)
@@ -99,28 +191,9 @@ export function HomeHeaderControls({ groupName }: { groupName: string }) {
             refreshData()
           }}
         />
-      </Tooltip>
+      </div>
 
-      <div className="w-px h-5 bg-border mx-1" />
-
-      {/* 登出 */}
-      <Tooltip label="登出">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleLogout}
-          disabled={loggingOut}
-          className="w-9 h-9 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
-        >
-          {loggingOut ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <LogOut className="w-4 h-4" />
-          )}
-        </Button>
-      </Tooltip>
-
-      {/* 主題切換 */}
+      {/* 主題切換（桌面 + 手機皆顯示） */}
       <Tooltip label="切換主題">
         <ThemeToggle />
       </Tooltip>

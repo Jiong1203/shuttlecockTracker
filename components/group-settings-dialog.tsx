@@ -19,10 +19,17 @@ import { useRouter } from "next/navigation"
 interface GroupSettingsDialogProps {
   currentGroupName: string
   onUpdateSuccess: (newName?: string) => void
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
-export function GroupSettingsDialog({ currentGroupName, onUpdateSuccess }: GroupSettingsDialogProps) {
-  const [open, setOpen] = useState(false)
+export function GroupSettingsDialog({ currentGroupName, onUpdateSuccess, open: controlledOpen, onOpenChange }: GroupSettingsDialogProps) {
+  const [internalOpen, setInternalOpen] = useState(false)
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen
+  const setOpen = (value: boolean) => {
+    setInternalOpen(value)
+    onOpenChange?.(value)
+  }
   const [loading, setLoading] = useState(false)
   const [isLoadingSettings, setIsLoadingSettings] = useState(false)
   
@@ -227,11 +234,13 @@ export function GroupSettingsDialog({ currentGroupName, onUpdateSuccess }: Group
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" className="w-9 h-9 text-muted-foreground hover:text-foreground">
-          <Settings className="w-4 h-4" />
-        </Button>
-      </DialogTrigger>
+      {controlledOpen === undefined && (
+        <DialogTrigger asChild>
+          <Button variant="ghost" size="icon" className="w-9 h-9 text-muted-foreground hover:text-foreground">
+            <Settings className="w-4 h-4" />
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-[425px] max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
