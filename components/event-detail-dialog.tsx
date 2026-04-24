@@ -197,8 +197,15 @@ function FifoCalculator({ eventId, onApply }: { eventId: string; onApply: (cost:
 // ─── AttendeeRow ──────────────────────────────────────────────────────────────
 
 function AttendeeRow({
-  a, eventId, isSettled, onUpdated,
-}: { a: Attendee; eventId: string; isSettled: boolean; onUpdated: () => void }) {
+  a, eventId, isSettled, onUpdated, checked, onToggle,
+}: {
+  a: Attendee
+  eventId: string
+  isSettled: boolean
+  onUpdated: () => void
+  checked: boolean
+  onToggle: () => void
+}) {
   const [loading, setLoading] = useState(false)
   const [fee, setFee] = useState(String(a.fee))
   const [editingFee, setEditingFee] = useState(false)
@@ -234,6 +241,16 @@ function AttendeeRow({
 
   return (
     <div className={`flex items-center gap-2 py-2.5 px-1 rounded-lg text-sm transition-colors ${loading ? 'opacity-50' : ''}`}>
+      {/* Checkbox */}
+      {!isSettled && (
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={onToggle}
+          className="h-4 w-4 rounded border-input cursor-pointer accent-blue-600 shrink-0"
+        />
+      )}
+
       {/* Name */}
       <span className={`flex-1 font-medium truncate min-w-0 ${a.is_free ? 'text-muted-foreground' : ''}`}>
         {a.display_name}
@@ -322,13 +339,14 @@ export function EventDetailDialog({ eventId, open, onOpenChange }: EventDetailDi
   const [bulkFee, setBulkFee] = useState('')
   const [editingShuttle, setEditingShuttle] = useState(false)
   const [shuttleCostInput, setShuttleCostInput] = useState('')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   const fetchEvent = useCallback(async () => {
     setLoading(true)
     try {
       const res = await fetch(`/api/events/${eventId}`)
       const data = await res.json()
-      if (res.ok) setEvent(data)
+      if (res.ok) { setEvent(data); setSelectedIds(new Set()) }
     } finally { setLoading(false) }
   }, [eventId])
 
@@ -420,6 +438,65 @@ export function EventDetailDialog({ eventId, open, onOpenChange }: EventDetailDi
     } finally { setSettling(false) }
   }
 
+  // ─── Multi-select helpers ────────────────────────────────────────────────────
+
+  const selectableIds = event?.event_attendees.map(a => a.id) ?? []
+  const allSelected = selectableIds.length > 0 && selectableIds.every(id => selectedIds.has(id))
+
+  const handleToggleAll = () => {
+    if (allSelected) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(selectableIds))
+    }
+  }
+
+  const handleToggleOne = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const handleBulkMarkPaid = async () => {
+    if (!event || selectedIds.size === 0) return
+    const targets = event.event_attendees.filter(a => selectedIds.has(a.id) && !a.is_free)
+    if (targets.length === 0) { showToast('選取的出席者皆為免費，無需標記繳費', 'info'); return }
+    await Promise.all(targets.map(a =>
+      fetch(`/api/events/${eventId}/attendees/${a.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paid: true }),
+      })
+    ))
+    fetchEvent()
+  }
+
+  const handleBulkMarkUnpaid = async () => {
+    if (!event || selectedIds.size === 0) return
+    const targets = event.event_attendees.filter(a => selectedIds.has(a.id) && !a.is_free)
+    if (targets.length === 0) { showToast('選取的出席者皆為免費，無需調整', 'info'); return }
+    await Promise.all(targets.map(a =>
+      fetch(`/api/events/${eventId}/attendees/${a.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paid: false }),
+      })
+    ))
+    fetchEvent()
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return
+    if (!confirm(`確定刪除選取的 ${selectedIds.size} 位出席者？`)) return
+    await Promise.all([...selectedIds].map(id =>
+      fetch(`/api/events/${eventId}/attendees/${id}`, { method: 'DELETE' })
+    ))
+    fetchEvent()
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] sm:max-w-[580px] md:max-w-[700px] max-h-[90vh] flex flex-col">
@@ -481,13 +558,25 @@ export function EventDetailDialog({ eventId, open, onOpenChange }: EventDetailDi
 
             {/* Attendees */}
             <div className="space-y-2">
+              {/* Attendees header */}
               <div className="flex flex-col gap-2 px-1 sm:flex-row sm:items-center sm:justify-between">
-                <span className="text-sm font-semibold">
-                  出席名單
-                  <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-                    ({event.event_attendees.length} 人 / {event.event_attendees.filter(a => a.paid && !a.is_free).length} 人已繳)
+                <div className="flex items-center gap-2">
+                  {!event.is_settled && (
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={handleToggleAll}
+                      className="h-4 w-4 rounded border-input cursor-pointer accent-blue-600 shrink-0"
+                      title="全選 / 取消全選"
+                    />
+                  )}
+                  <span className="text-sm font-semibold">
+                    出席名單
+                    <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                      ({event.event_attendees.length} 人 / {event.event_attendees.filter(a => a.paid && !a.is_free).length} 人已繳)
+                    </span>
                   </span>
-                </span>
+                </div>
                 <div className="flex items-center gap-2">
                   <div className="flex items-center gap-1">
                     <Input
@@ -503,13 +592,55 @@ export function EventDetailDialog({ eventId, open, onOpenChange }: EventDetailDi
                 </div>
               </div>
 
+              {/* Bulk action toolbar */}
+              {selectedIds.size > 0 && !event.is_settled && (
+                <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 text-xs">
+                  <span className="text-blue-700 dark:text-blue-300 font-medium shrink-0">
+                    已選 {selectedIds.size} 人
+                  </span>
+                  <div className="flex items-center gap-1.5 ml-auto flex-wrap">
+                    <button
+                      onClick={handleBulkMarkPaid}
+                      className="px-2 py-1 rounded bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-700 hover:bg-emerald-200 dark:hover:bg-emerald-900/60 transition-colors"
+                    >
+                      標記已繳
+                    </button>
+                    <button
+                      onClick={handleBulkMarkUnpaid}
+                      className="px-2 py-1 rounded bg-muted text-muted-foreground border border-border hover:bg-muted/80 transition-colors"
+                    >
+                      標記未繳
+                    </button>
+                    <button
+                      onClick={handleBulkDelete}
+                      className="px-2 py-1 rounded bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-950/50 transition-colors"
+                    >
+                      刪除
+                    </button>
+                    <button
+                      onClick={() => setSelectedIds(new Set())}
+                      className="text-muted-foreground hover:text-foreground transition-colors ml-1"
+                    >
+                      取消
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="rounded-xl border divide-y divide-border/60">
                 {event.event_attendees.length === 0 ? (
                   <p className="text-center text-sm text-muted-foreground py-4">尚無出席者</p>
                 ) : (
                   event.event_attendees.map(a => (
                     <div key={a.id} className="px-3">
-                      <AttendeeRow a={a} eventId={eventId} isSettled={event.is_settled} onUpdated={fetchEvent} />
+                      <AttendeeRow
+                        a={a}
+                        eventId={eventId}
+                        isSettled={event.is_settled}
+                        onUpdated={fetchEvent}
+                        checked={selectedIds.has(a.id)}
+                        onToggle={() => handleToggleOne(a.id)}
+                      />
                     </div>
                   ))
                 )}
