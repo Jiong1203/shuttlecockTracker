@@ -42,3 +42,7 @@ next-env.d.ts
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# DB migration (含密碼與全量資料 dump，禁止進版控)
+.migration.env
+/.migration/
