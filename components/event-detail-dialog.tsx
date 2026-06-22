@@ -23,6 +23,7 @@ interface FullEvent {
   hourly_rate: number
   shuttle_cost_mode: 'auto' | 'manual'
   shuttle_cost: number
+  shuttle_count: number | null
   is_settled: boolean
   notes: string | null
   venue_cost: number
@@ -80,7 +81,7 @@ function ProfitCard({ event }: { event: FullEvent }) {
 
 const PIECES_PER_TUBE = 12  // 1 桶 = 12 顆（標準羽毛球）
 
-function FifoCalculator({ eventId, onApply }: { eventId: string; onApply: (cost: number) => void }) {
+function FifoCalculator({ eventId, onApply }: { eventId: string; onApply: (cost: number, pieces: number) => void }) {
   const [open, setOpen] = useState(false)
   const [types, setTypes] = useState<ShuttleType[]>([])
   const [typeId, setTypeId] = useState('')
@@ -121,7 +122,8 @@ function FifoCalculator({ eventId, onApply }: { eventId: string; onApply: (cost:
 
   const handleApply = async () => {
     if (result === null) return
-    onApply(result)
+    // 連同本場用球顆數一起回傳儲存
+    onApply(result, Math.round(parseFloat(piecesQty)))
     setOpen(false)
   }
 
@@ -339,6 +341,7 @@ export function EventDetailDialog({ eventId, open, onOpenChange }: EventDetailDi
   const [bulkFee, setBulkFee] = useState('')
   const [editingShuttle, setEditingShuttle] = useState(false)
   const [shuttleCostInput, setShuttleCostInput] = useState('')
+  const [shuttleCountInput, setShuttleCountInput] = useState('')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   const fetchEvent = useCallback(async () => {
@@ -398,11 +401,11 @@ export function EventDetailDialog({ eventId, open, onOpenChange }: EventDetailDi
     fetchEvent()
   }
 
-  const handleApplyFifoCost = async (cost: number) => {
+  const handleApplyFifoCost = async (cost: number, pieces: number) => {
     const res = await fetch(`/api/events/${eventId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ shuttleCost: cost, shuttleCostMode: 'auto' }),
+      body: JSON.stringify({ shuttleCost: cost, shuttleCount: pieces, shuttleCostMode: 'auto' }),
     })
     if (!res.ok) { const d = await res.json(); showToast(d.error, 'error'); return }
     showToast('用球成本已更新', 'success')
@@ -412,10 +415,18 @@ export function EventDetailDialog({ eventId, open, onOpenChange }: EventDetailDi
   const handleUpdateShuttleCost = async () => {
     const cost = parseFloat(shuttleCostInput)
     if (isNaN(cost) || cost < 0) { showToast('請輸入有效金額', 'warning'); return }
+    // 用球數選填：留空則清為「未記錄」，有值需為非負整數
+    const trimmedCount = shuttleCountInput.trim()
+    let shuttleCount: number | null = null
+    if (trimmedCount !== '') {
+      const parsedCount = parseFloat(trimmedCount)
+      if (isNaN(parsedCount) || parsedCount < 0) { showToast('用球數需為 0 以上的數字', 'warning'); return }
+      shuttleCount = Math.round(parsedCount)
+    }
     const res = await fetch(`/api/events/${eventId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ shuttleCost: cost, shuttleCostMode: 'manual' }),
+      body: JSON.stringify({ shuttleCost: cost, shuttleCount, shuttleCostMode: 'manual' }),
     })
     if (!res.ok) { const d = await res.json(); showToast(d.error, 'error'); return }
     setEditingShuttle(false)
@@ -529,7 +540,9 @@ export function EventDetailDialog({ eventId, open, onOpenChange }: EventDetailDi
             <div className="flex flex-col gap-1.5 text-xs px-1 sm:flex-row sm:items-center sm:justify-between">
               <span className="text-muted-foreground">
                 用球成本：<span className="font-semibold text-foreground">{fmtMoney(event.shuttle_cost)}</span>
-                <span className="ml-1 opacity-60">({event.shuttle_cost_mode === 'auto' ? '先進先出' : '手動'})</span>
+                <span className="ml-1 opacity-60">
+                  ({event.shuttle_count != null ? `${event.shuttle_count.toLocaleString()} 顆 · ` : ''}{event.shuttle_cost_mode === 'auto' ? '先進先出' : '手動'})
+                </span>
               </span>
               <div className="flex items-center gap-3 flex-wrap">
                 <FifoCalculator eventId={eventId} onApply={handleApplyFifoCost} />
@@ -537,8 +550,17 @@ export function EventDetailDialog({ eventId, open, onOpenChange }: EventDetailDi
                   <div className="flex items-center gap-1">
                     <Input
                       type="number" autoFocus
+                      placeholder="金額"
                       value={shuttleCostInput}
                       onChange={e => setShuttleCostInput(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleUpdateShuttleCost()}
+                      className="h-7 w-20 text-xs"
+                    />
+                    <Input
+                      type="number" min="0" step="1"
+                      placeholder="用球數（顆）"
+                      value={shuttleCountInput}
+                      onChange={e => setShuttleCountInput(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && handleUpdateShuttleCost()}
                       className="h-7 w-24 text-xs"
                     />
@@ -547,7 +569,11 @@ export function EventDetailDialog({ eventId, open, onOpenChange }: EventDetailDi
                   </div>
                 ) : (
                   <button
-                    onClick={() => { setShuttleCostInput(String(event.shuttle_cost)); setEditingShuttle(true) }}
+                    onClick={() => {
+                      setShuttleCostInput(String(event.shuttle_cost))
+                      setShuttleCountInput(event.shuttle_count != null ? String(event.shuttle_count) : '')
+                      setEditingShuttle(true)
+                    }}
                     className="flex items-center gap-1 text-muted-foreground hover:text-foreground hover:underline py-1"
                   >
                     <RotateCcw className="w-3 h-3" /> 手動修改

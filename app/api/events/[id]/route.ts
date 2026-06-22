@@ -30,7 +30,7 @@ export async function GET(
     .from('badminton_events')
     .select(`
       id, event_date, venue_name, court_count, hours, hourly_rate,
-      shuttle_cost_mode, shuttle_cost, is_settled, notes, created_at,
+      shuttle_cost_mode, shuttle_cost, shuttle_count, is_settled, notes, created_at,
       clubs!inner ( group_id ),
       event_attendees ( id, display_name, fee, paid, is_free, created_at )
     `)
@@ -70,7 +70,7 @@ export async function PATCH(
   if (!event) return NextResponse.json({ error: '找不到此活動' }, { status: 404 })
 
   const body = await request.json()
-  const { eventDate, venueName, courtCount, hours, hourlyRate, shuttleCostMode, shuttleCost, notes, isSettled } = body
+  const { eventDate, venueName, courtCount, hours, hourlyRate, shuttleCostMode, shuttleCost, shuttleCount, notes, isSettled } = body
 
   const updates: Record<string, unknown> = {}
   if (eventDate !== undefined) updates.event_date = eventDate
@@ -80,6 +80,11 @@ export async function PATCH(
   if (hourlyRate !== undefined) updates.hourly_rate = hourlyRate
   if (shuttleCostMode !== undefined) updates.shuttle_cost_mode = shuttleCostMode
   if (shuttleCost !== undefined) updates.shuttle_cost = shuttleCost
+  // 用球數：傳入正整數則記錄，傳 null 或空字串視為清除（未記錄）
+  if (shuttleCount !== undefined) {
+    updates.shuttle_count =
+      shuttleCount === null || shuttleCount === '' ? null : Math.round(Number(shuttleCount))
+  }
   if (notes !== undefined) updates.notes = notes?.trim() || null
   if (isSettled !== undefined) updates.is_settled = isSettled
 
@@ -91,7 +96,7 @@ export async function PATCH(
     .from('badminton_events')
     .update(updates)
     .eq('id', id)
-    .select('id, event_date, venue_name, court_count, hours, hourly_rate, shuttle_cost_mode, shuttle_cost, is_settled, notes, created_at')
+    .select('id, event_date, venue_name, court_count, hours, hourly_rate, shuttle_cost_mode, shuttle_cost, shuttle_count, is_settled, notes, created_at')
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
