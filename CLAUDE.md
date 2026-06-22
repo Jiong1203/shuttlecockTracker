@@ -22,6 +22,26 @@ npm run build   # Production build
 npm run lint    # ESLint
 ```
 
+## Commit Message Convention
+
+本專案 commit message **一律使用繁體中文（zh-tw）**，無需每次再指定語言關鍵字。
+
+- 遵循 **Conventional Commits**：`<type>` 使用英文 keyword（`feat` / `fix` / `refactor` / `chore` / `docs` / `style` / `test` / `perf`），`<subject_line>`、`原因`、`調整項目` 一律繁體中文。
+- **不要**加入 `Co-authored-by` trailer 或任何 AI 簽名。
+- 格式範本：
+
+  ```
+  <type>: <subject_line>
+
+  原因：
+  1. [原因 1]
+  2. [原因 2]
+
+  調整項目：
+  1. [檔案或元件]：[變更內容]
+  2. [檔案或元件]：[變更內容]
+  ```
+
 ## Project Structure
 
 ```
