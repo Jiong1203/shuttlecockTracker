@@ -41,7 +41,7 @@ app/
   actions/               # Server Actions (auth logging)
   login/                 # Login / sign-up page
   page.tsx               # Home (Server Component — fetches data server-side)
-  client-wrapper.tsx     # Dynamic import wrapper (ssr: false)
+  client-wrapper.tsx     # 'use client' boundary; dynamic()-imports interactive parts by `variant`
   home-interactive.tsx   # Client-side interactions + InventoryManagerDialog
 components/
   ui/                    # Shadcn base components + Toast system
@@ -58,7 +58,15 @@ lib/
 middleware.ts    # Auth guard — protects / and /clubs/* routes
 supabase/
   migrations/    # Supabase CLI migration files (switched from single-file plan)
+docs/
+  user-manual.md             # In-app user manual (rendered via react-markdown in the Home toolbar)
+  PERFORMANCE_OPTIMIZATION.md # Perf notes
+  PRD-venue-session-module.md # Product spec
 ```
+
+### Home page data flow (Server → Client split)
+- `app/page.tsx` is a **Server Component**: it reads the session from cookies (`getSession()`, no extra network round-trip since middleware already validated), fetches `inventory_summary` + `pickup_records` in parallel, and passes them down as props.
+- `client-wrapper.tsx` is the `'use client'` boundary. It renders different interactive trees by `variant`: `"header"` → `HomeHeaderControls` (toolbar buttons), `"content"` → `HomeInteractive` (+ `WelcomeGuide` when `totalCurrentStock === 0`). Interactive children are `dynamic()`-imported and wrapped in `<Suspense>` with skeleton fallbacks.
 
 ## Key Conventions
 
@@ -83,6 +91,11 @@ supabase/
 - POST `/api/pickup` uses `supabase.rpc('insert_pickup_record', ...)` to prevent TOCTOU race conditions
 - The DB function uses `SELECT ... FOR UPDATE` to lock the shuttlecock_type row
 
+### Settlement FIFO Calculation (`/api/settlement/calculate`)
+- **Replays ALL pickups from the beginning**, not just those in the queried period. This is required to know *which restock batch* each pickup consumed; only pickups inside the period accumulate into the returned cost. Do not "optimize" by filtering pickups before the FIFO replay — it breaks batch attribution.
+- **End-date boundary gotcha** (the v1.4 bug): `end_date` is parsed at UTC 00:00, so a naive `<= end_date` excludes that whole day. The fix is `created_at < (end_date + 1 day)` — strict less-than against the next day. Preserve this when touching date filters.
+- Computed entirely in the route (TypeScript), not in SQL.
+
 ### Toast Notifications
 - Use `showToast(message, type)` from `@/components/ui/toast`
 - `ToastContainer` must be mounted in the page (already in `home-interactive.tsx` and `login/page.tsx`)
@@ -106,6 +119,7 @@ supabase db push                        # push to linked project
 |------|-------------|
 | `20260401070700_remote_schema.sql` | Baseline remote schema snapshot |
 | `20260401071611_add_club_event_tables.sql` | clubs, badminton_events, event_attendees tables + RLS + indexes |
+| `20260408000000_add_pickup_date_param.sql` | Adds `p_pickup_date` param to `insert_pickup_record` RPC (allows backdating a pickup; defaults to `NOW()`) |
 
 ### Legacy applied migrations (pre-CLI, via SQL Editor)
 
