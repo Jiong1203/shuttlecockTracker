@@ -24,6 +24,7 @@ interface BadmintonEvent {
   id: string; event_date: string; venue_name: string | null
   court_count: number; hours: number; hourly_rate: number
   shuttle_cost_mode: 'auto' | 'manual'; shuttle_cost: number
+  shuttle_count: number | null
   is_settled: boolean; notes: string | null
   venue_cost: number; total_revenue: number; profit: number
 }
@@ -555,10 +556,11 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
         {/* Events Table */}
         <div className="rounded-xl border bg-card overflow-hidden shadow-sm">
           {/* Table Header — desktop only */}
-          <div className="hidden md:grid grid-cols-[120px_1fr_90px_90px_90px_100px_80px_50px] gap-3 px-5 py-3 bg-muted/40 border-b text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+          <div className="hidden md:grid grid-cols-[120px_1fr_90px_72px_90px_90px_100px_80px_50px] gap-3 px-5 py-3 bg-muted/40 border-b text-xs font-semibold text-muted-foreground uppercase tracking-wide">
             <span>日期</span>
             <span>場地</span>
             <span className="text-right">場租</span>
+            <span className="text-right">用球數</span>
             <span className="text-right">球費</span>
             <span className="text-right">收費</span>
             <span className="text-right">利潤</span>
@@ -589,7 +591,10 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
                       <span className="font-semibold text-sm">{ev.event_date}</span>
                       {ev.is_settled && <BadgeCheck className="w-3.5 h-3.5 text-green-500 shrink-0" />}
                     </div>
-                    <div className="text-xs text-muted-foreground truncate mt-0.5">{ev.venue_name || '未設定場地'}</div>
+                    <div className="text-xs text-muted-foreground truncate mt-0.5">
+                      {ev.venue_name || '未設定場地'}
+                      {ev.shuttle_count != null && <span className="opacity-80"> · 用球 {ev.shuttle_count.toLocaleString()} 顆</span>}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className={`text-sm font-bold ${profitClass(ev.profit)}`}>{profitLabel(ev.profit)}</span>
@@ -607,10 +612,11 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
                   </div>
                 </div>
                 {/* Desktop layout */}
-                <div className="hidden md:grid grid-cols-[120px_1fr_90px_90px_90px_100px_80px_50px] gap-3 py-4 items-center">
+                <div className="hidden md:grid grid-cols-[120px_1fr_90px_72px_90px_90px_100px_80px_50px] gap-3 py-4 items-center">
                   <div className="font-semibold text-sm">{ev.event_date}</div>
                   <div className="text-sm text-muted-foreground truncate">{ev.venue_name || '—'}</div>
                   <div className="text-sm text-right">{fmtMoney(ev.venue_cost)}</div>
+                  <div className="text-sm text-right">{ev.shuttle_count != null ? `${ev.shuttle_count.toLocaleString()} 顆` : '—'}</div>
                   <div className="text-sm text-right">{fmtMoney(ev.shuttle_cost)}</div>
                   <div className="text-sm text-right">{fmtMoney(ev.total_revenue)}</div>
                   <div className={`text-sm text-right ${profitClass(ev.profit)}`}>{profitLabel(ev.profit)}</div>

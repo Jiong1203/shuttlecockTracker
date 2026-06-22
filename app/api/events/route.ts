@@ -31,7 +31,7 @@ export async function GET(request: Request) {
     .from('badminton_events')
     .select(`
       id, event_date, venue_name, court_count, hours, hourly_rate,
-      shuttle_cost_mode, shuttle_cost, is_settled, notes, created_at,
+      shuttle_cost_mode, shuttle_cost, shuttle_count, is_settled, notes, created_at,
       event_attendees ( fee, paid, is_free )
     `)
     .eq('club_id', clubId)
