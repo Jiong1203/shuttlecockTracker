@@ -54,3 +54,26 @@ export function computeEventStats(events: EventForStats[]): EventAggregates {
     avgAttendance: count ? acc.totalAttendance / count : 0,
   }
 }
+
+// ─── 趨勢分桶（B2 趨勢圖使用）────────────────────────────────────────────────
+
+export interface MonthlyPoint {
+  month: string  // 'YYYY-MM'
+  label: string  // 'YYYY/MM'
+  value: number
+}
+
+// 將活動依 event_date（'YYYY-MM-DD'）按月分桶並加總 accessor 取出的數值，依月份升冪排序。
+export function groupByMonth<T extends { event_date: string }>(
+  events: T[],
+  value: (e: T) => number
+): MonthlyPoint[] {
+  const map = new Map<string, number>()
+  for (const e of events) {
+    const month = e.event_date.slice(0, 7)  // 'YYYY-MM'
+    map.set(month, (map.get(month) ?? 0) + (value(e) || 0))
+  }
+  return [...map.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, v]) => ({ month, label: `${month.slice(0, 4)}/${month.slice(5, 7)}`, value: v }))
+}

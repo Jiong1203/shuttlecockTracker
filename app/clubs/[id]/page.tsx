@@ -11,10 +11,11 @@ import {
 import { ToastContainer, showToast } from "@/components/ui/toast"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { EventDetailDialog } from "@/components/event-detail-dialog"
-import { computeEventStats } from "@/lib/event-stats"
+import { computeEventStats, groupByMonth } from "@/lib/event-stats"
+import { EventTrendChart } from "@/components/event-trend-chart"
 import {
   ChevronLeft, Plus, Loader2, Lock, CalendarDays,
-  BadgeCheck, Trash2, Sparkles, ClipboardList,
+  BadgeCheck, Trash2, Sparkles, ClipboardList, ChevronDown, X,
 } from "lucide-react"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -453,6 +454,9 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
   const [detailEventId, setDetailEventId] = useState<string | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [expandedMetric, setExpandedMetric] = useState<string | null>(null)
 
   // Check session verification & fetch club info
   useEffect(() => {
@@ -468,11 +472,14 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
   const fetchEvents = useCallback(async () => {
     setLoadingEvents(true)
     try {
-      const res = await fetch(`/api/events?club_id=${clubId}`)
+      const qs = new URLSearchParams({ club_id: clubId })
+      if (startDate) qs.set('start', startDate)
+      if (endDate) qs.set('end', endDate)
+      const res = await fetch(`/api/events?${qs.toString()}`)
       const data = await res.json()
       if (res.ok) setEvents(data)
     } finally { setLoadingEvents(false) }
-  }, [clubId])
+  }, [clubId, startDate, endDate])
 
   useEffect(() => { if (verified) fetchEvents() }, [verified, fetchEvents])
 
@@ -508,8 +515,28 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
   }
 
   // Profit summary
-  // 彙總統計（建立在目前顯示的 events 上，未來加日期篩選會自動跟隨）
+  // 彙總統計（建立在目前顯示的 events 上，日期篩選會自動跟隨）
   const stats = computeEventStats(events)
+
+  // 彙總卡設定；具 chart 者可點擊展開每月趨勢圖（B2）
+  const statCards: {
+    key: string
+    label: string
+    value: string
+    className?: string
+    chart?: { title: string; accessor: (e: BadmintonEvent) => number; format: (v: number) => string; barClass: string }
+  }[] = [
+    { key: 'shuttle', label: '累計用球', value: `${stats.totalShuttleCount.toLocaleString()} 顆`,
+      chart: { title: '每月用球量（顆）', accessor: e => e.shuttle_count ?? 0, format: v => `${v.toLocaleString()} 顆`, barClass: 'bg-sky-500' } },
+    { key: 'shuttleCost', label: '累計球費', value: fmtMoney(stats.totalShuttleCost),
+      chart: { title: '每月球費', accessor: e => Number(e.shuttle_cost) || 0, format: fmtMoney, barClass: 'bg-amber-500' } },
+    { key: 'revenue', label: '累計收費', value: fmtMoney(stats.totalRevenue),
+      chart: { title: '每月收費', accessor: e => Number(e.total_revenue) || 0, format: fmtMoney, barClass: 'bg-emerald-500' } },
+    { key: 'profit', label: '累計利潤', value: profitLabel(stats.totalProfit), className: profitClass(stats.totalProfit),
+      chart: { title: '每月利潤', accessor: e => Number(e.profit) || 0, format: profitLabel, barClass: 'bg-blue-500' } },
+    { key: 'avgProfit', label: '平均每場利潤', value: profitLabel(stats.avgProfit), className: profitClass(stats.avgProfit) },
+    { key: 'avgAtt', label: '平均出席', value: `${stats.avgAttendance.toFixed(1)} 人` },
+  ]
 
   return (
     <main className="min-h-screen bg-background">
@@ -547,22 +574,59 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
           </Button>
         </div>
 
-        {/* Summary stat strip — 彙總各場用球、費用與利潤，方便橫向比較 */}
+        {/* Date filter — 篩選後彙總、合計與趨勢圖皆自動跟隨 */}
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <CalendarDays className="w-4 h-4 text-muted-foreground shrink-0" />
+          <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="h-9 w-auto text-xs" aria-label="開始日期" />
+          <span className="text-muted-foreground">~</span>
+          <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="h-9 w-auto text-xs" aria-label="結束日期" />
+          {(startDate || endDate) && (
+            <button
+              onClick={() => { setStartDate(''); setEndDate('') }}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2 py-1.5"
+            >
+              <X className="w-3 h-3" /> 清除
+            </button>
+          )}
+        </div>
+
+        {/* Summary stat strip + 趨勢圖（點擊卡片展開每月趨勢） */}
         {events.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-            {[
-              { label: '累計用球', value: `${stats.totalShuttleCount.toLocaleString()} 顆` },
-              { label: '累計球費', value: fmtMoney(stats.totalShuttleCost) },
-              { label: '累計收費', value: fmtMoney(stats.totalRevenue) },
-              { label: '累計利潤', value: profitLabel(stats.totalProfit), className: profitClass(stats.totalProfit) },
-              { label: '平均每場利潤', value: profitLabel(stats.avgProfit), className: profitClass(stats.avgProfit) },
-              { label: '平均出席', value: `${stats.avgAttendance.toFixed(1)} 人` },
-            ].map(s => (
-              <div key={s.label} className="rounded-lg border bg-muted/30 px-3 py-2 text-center sm:text-left">
-                <div className="text-[11px] text-muted-foreground">{s.label}</div>
-                <div className={`text-sm font-black mt-0.5 ${s.className ?? 'text-foreground'}`}>{s.value}</div>
-              </div>
-            ))}
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+              {statCards.map(c => {
+                const clickable = !!c.chart
+                const active = expandedMetric === c.key
+                return (
+                  <button
+                    key={c.key}
+                    type="button"
+                    disabled={!clickable}
+                    onClick={() => clickable && setExpandedMetric(active ? null : c.key)}
+                    className={`rounded-lg border px-3 py-2 text-center sm:text-left transition-colors ${
+                      clickable ? 'cursor-pointer hover:bg-muted/60' : 'cursor-default'
+                    } ${active ? 'border-blue-400 dark:border-blue-600 bg-muted/60 ring-1 ring-blue-400/40' : 'bg-muted/30'}`}
+                  >
+                    <div className="text-[11px] text-muted-foreground flex items-center gap-1 justify-center sm:justify-start">
+                      {c.label}
+                      {clickable && <ChevronDown className={`w-3 h-3 transition-transform ${active ? 'rotate-180' : ''}`} />}
+                    </div>
+                    <div className={`text-sm font-black mt-0.5 ${c.className ?? 'text-foreground'}`}>{c.value}</div>
+                  </button>
+                )
+              })}
+            </div>
+            {expandedMetric && (() => {
+              const c = statCards.find(x => x.key === expandedMetric)
+              return c?.chart ? (
+                <EventTrendChart
+                  title={c.chart.title}
+                  data={groupByMonth(events, c.chart.accessor)}
+                  format={c.chart.format}
+                  barClass={c.chart.barClass}
+                />
+              ) : null
+            })()}
           </div>
         )}
 
@@ -588,7 +652,9 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
           ) : events.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 space-y-3 text-muted-foreground">
               <CalendarDays className="w-12 h-12 opacity-20" />
-              <p className="text-sm">尚無活動紀錄，點擊「新增活動」開始記錄</p>
+              <p className="text-sm">
+                {startDate || endDate ? '此區間沒有活動，試試調整或清除日期篩選' : '尚無活動紀錄，點擊「新增活動」開始記錄'}
+              </p>
             </div>
           ) : (
             events.map((ev, i) => (
