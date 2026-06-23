@@ -37,7 +37,9 @@ interface ParsedName { name: string; included: boolean; fee: number; isFree: boo
 // ─── LINE Parser ──────────────────────────────────────────────────────────────
 
 function parseLineMessage(text: string) {
-  const mainText = text.split(/候補[0-9]?[：:]?[\s\S]*|——+|🈵/)[0]
+  // 僅在「候補」作為名單區段標題時截斷（候補 自成一行，可含數字/冒號後接換行）；
+  // 不誤砍如「報名 16/16｜候補 0」這類行內統計數字，否則會把後面整份名單一起吃掉。
+  const mainText = text.split(/候補\d?[：:]?[ \t]*\n[\s\S]*|——+|🈵/)[0]
 
   let eventDate: string | undefined
   const fullDate = mainText.match(/(\d{4})[\/.\-](\d{1,2})[\/.\-](\d{1,2})/)
@@ -66,8 +68,13 @@ function parseLineMessage(text: string) {
   }
 
   let venueName: string | undefined
-  const venueMatch = mainText.match(/場館[：:]\s*([^\n]+)|場地[：:]\s*([^\n]+)/)
-  if (venueMatch) venueName = (venueMatch[1] || venueMatch[2]).trim()
+  const venueMatch = mainText.match(/(?:場館|場地|地點)[：:]\s*([^\n]+)/)
+  if (venueMatch) venueName = venueMatch[1].trim()
+
+  // 每人費用（如「費用：200 元」）
+  let fee: number | undefined
+  const feeMatch = mainText.match(/費用[：:]\s*\$?(\d+)/)
+  if (feeMatch) fee = parseInt(feeMatch[1], 10)
 
   const names: string[] = []
   const nameRe = /^\d+[.．、][ \t]*(.+)/gm
@@ -76,7 +83,7 @@ function parseLineMessage(text: string) {
     const n = m[1].trim()
     if (n) names.push(n)
   }
-  return { eventDate, venueName, hours, names }
+  return { eventDate, venueName, hours, names, fee }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -123,7 +130,9 @@ function CreateEventDialog({
     if (result.venueName) setVenueName(result.venueName)
     if (result.hours) setHours(String(result.hours))
     if (result.names.length === 0) { showToast('未找到出席名單，請確認訊息格式', 'warning'); return }
-    const fee = parseFloat(defaultFee) || 0
+    // 優先採用訊息解析到的費用，否則沿用使用者輸入的預設費用
+    const fee = result.fee ?? (parseFloat(defaultFee) || 0)
+    if (result.fee != null) setDefaultFee(String(result.fee))
     setParsedNames(result.names.map(name => ({ name, included: true, fee, isFree: false })))
     showToast(`已解析 ${result.names.length} 位出席者`, 'success')
   }
