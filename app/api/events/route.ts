@@ -51,8 +51,7 @@ export async function GET(request: Request) {
     const profit = totalRevenue - Number(e.shuttle_cost) - venueCost
 
     const { event_attendees, ...rest } = e
-    void event_attendees
-    return { ...rest, venue_cost: venueCost, total_revenue: totalRevenue, profit }
+    return { ...rest, attendee_count: event_attendees.length, venue_cost: venueCost, total_revenue: totalRevenue, profit }
   })
 
   return NextResponse.json(events)

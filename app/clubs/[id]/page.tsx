@@ -11,6 +11,7 @@ import {
 import { ToastContainer, showToast } from "@/components/ui/toast"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { EventDetailDialog } from "@/components/event-detail-dialog"
+import { computeEventStats } from "@/lib/event-stats"
 import {
   ChevronLeft, Plus, Loader2, Lock, CalendarDays,
   BadgeCheck, Trash2, Sparkles, ClipboardList,
@@ -27,6 +28,7 @@ interface BadmintonEvent {
   shuttle_count: number | null
   is_settled: boolean; notes: string | null
   venue_cost: number; total_revenue: number; profit: number
+  attendee_count: number
 }
 
 interface ParsedName { name: string; included: boolean; fee: number; isFree: boolean }
@@ -506,8 +508,8 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
   }
 
   // Profit summary
-  const totalProfit = events.reduce((s, e) => s + e.profit, 0)
-  const settledCount = events.filter(e => e.is_settled).length
+  // 彙總統計（建立在目前顯示的 events 上，未來加日期篩選會自動跟隨）
+  const stats = computeEventStats(events)
 
   return (
     <main className="min-h-screen bg-background">
@@ -532,26 +534,37 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
       </header>
 
       <div className="max-w-5xl mx-auto px-4 md:px-8 py-8 space-y-6">
-        {/* Stats + Action row */}
+        {/* Title + Action row */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="text-center sm:text-left">
-              <h1 className="text-xl font-black">活動紀錄</h1>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                共 {events.length} 場 · {settledCount} 場已結算
-              </p>
-            </div>
-            {events.length > 0 && (
-              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border bg-muted/30 text-sm">
-                <span className="text-muted-foreground">累計利潤</span>
-                <span className={`font-black ${profitClass(totalProfit)}`}>{profitLabel(totalProfit)}</span>
-              </div>
-            )}
+          <div className="text-center sm:text-left">
+            <h1 className="text-xl font-black">活動紀錄</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              共 {stats.count} 場 · {stats.settledCount} 場已結算
+            </p>
           </div>
           <Button onClick={() => setCreateOpen(true)} className="gap-2 shrink-0">
             <Plus className="w-4 h-4" /> 新增活動
           </Button>
         </div>
+
+        {/* Summary stat strip — 彙總各場用球、費用與利潤，方便橫向比較 */}
+        {events.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+            {[
+              { label: '累計用球', value: `${stats.totalShuttleCount.toLocaleString()} 顆` },
+              { label: '累計球費', value: fmtMoney(stats.totalShuttleCost) },
+              { label: '累計收費', value: fmtMoney(stats.totalRevenue) },
+              { label: '累計利潤', value: profitLabel(stats.totalProfit), className: profitClass(stats.totalProfit) },
+              { label: '平均每場利潤', value: profitLabel(stats.avgProfit), className: profitClass(stats.avgProfit) },
+              { label: '平均出席', value: `${stats.avgAttendance.toFixed(1)} 人` },
+            ].map(s => (
+              <div key={s.label} className="rounded-lg border bg-muted/30 px-3 py-2 text-center sm:text-left">
+                <div className="text-[11px] text-muted-foreground">{s.label}</div>
+                <div className={`text-sm font-black mt-0.5 ${s.className ?? 'text-foreground'}`}>{s.value}</div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Events Table */}
         <div className="rounded-xl border bg-card overflow-hidden shadow-sm">
@@ -641,6 +654,21 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
                 </div>
               </div>
             ))
+          )}
+
+          {/* 合計列 — desktop only，對齊表頭欄位 */}
+          {events.length > 0 && (
+            <div className="hidden md:grid grid-cols-[120px_1fr_90px_72px_90px_90px_100px_80px_50px] gap-3 px-5 py-3.5 border-t-2 border-border bg-muted/40 items-center text-sm font-bold">
+              <div>合計</div>
+              <div></div>
+              <div className="text-right">{fmtMoney(stats.totalVenueCost)}</div>
+              <div className="text-right">{stats.totalShuttleCount.toLocaleString()} 顆</div>
+              <div className="text-right">{fmtMoney(stats.totalShuttleCost)}</div>
+              <div className="text-right">{fmtMoney(stats.totalRevenue)}</div>
+              <div className={`text-right ${profitClass(stats.totalProfit)}`}>{profitLabel(stats.totalProfit)}</div>
+              <div></div>
+              <div></div>
+            </div>
           )}
         </div>
 
