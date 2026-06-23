@@ -71,14 +71,18 @@ export function ClientWrapper({
           </Suspense>
         )}
         <Suspense fallback={
-          <div className="flex flex-col gap-4">
+          // 鏡像 HomeInteractive 的真實輸出（按鈕列 + 領取紀錄）以避免 chunk 載入時的版面位移
+          <>
             <div className="flex flex-row justify-center items-center gap-3 w-full max-w-2xl mx-auto">
-              <div className="flex-1 h-12 bg-muted animate-pulse rounded-xl" />
-              <div className="flex-1 h-12 bg-muted animate-pulse rounded-xl" />
-              <div className="flex-1 h-12 bg-muted animate-pulse rounded-xl" />
+              <div className="flex-1 min-w-[120px] h-14 bg-muted animate-pulse rounded-md" />
+              <div className="flex-1 min-w-[120px] h-14 bg-muted animate-pulse rounded-md" />
+              <div className="flex-1 min-w-[120px] h-14 bg-muted animate-pulse rounded-md" />
             </div>
-            <div className="w-full max-w-2xl mx-auto h-64 bg-muted animate-pulse rounded-xl" />
-          </div>
+            <div className="w-full max-w-2xl mx-auto mt-8">
+              <div className="h-7 w-40 bg-muted animate-pulse rounded-md mb-4 ml-2" />
+              <div className="h-80 bg-muted animate-pulse rounded-xl border border-border" />
+            </div>
+          </>
         }>
           <HomeInteractive
             groupName={groupName}
