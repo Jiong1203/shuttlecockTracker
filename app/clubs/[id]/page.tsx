@@ -537,8 +537,6 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
   }[] = [
     { key: 'shuttle', label: '累計用球', value: `${stats.totalShuttleCount.toLocaleString()} 顆`,
       chart: { title: '每月用球量（顆）', accessor: e => e.shuttle_count ?? 0, format: v => `${v.toLocaleString()} 顆`, barClass: 'bg-sky-500' } },
-    { key: 'venue', label: '累計場租', value: fmtMoney(stats.totalVenueCost),
-      chart: { title: '每月場租', accessor: e => Number(e.venue_cost) || 0, format: fmtMoney, barClass: 'bg-purple-500' } },
     { key: 'shuttleCost', label: '累計球費', value: fmtMoney(stats.totalShuttleCost),
       chart: { title: '每月球費', accessor: e => Number(e.shuttle_cost) || 0, format: fmtMoney, barClass: 'bg-amber-500' } },
     { key: 'revenue', label: '累計收費', value: fmtMoney(stats.totalRevenue),
@@ -638,6 +636,31 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
                 />
               ) : null
             })()}
+          </div>
+        )}
+
+        {/* 結算摘要 — mobile only；桌機的合計列在手機看不到，這裡補上結算導向的金額總結（含場租） */}
+        {events.length > 0 && (
+          <div className="md:hidden rounded-lg border bg-muted/30 px-4 py-3">
+            <div className="text-[11px] font-semibold text-muted-foreground mb-2">結算摘要 · 共 {stats.count} 場</div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+              <div className="flex items-baseline justify-between">
+                <span className="text-xs text-muted-foreground">場租</span>
+                <span className="font-bold">{fmtMoney(stats.totalVenueCost)}</span>
+              </div>
+              <div className="flex items-baseline justify-between">
+                <span className="text-xs text-muted-foreground">球費</span>
+                <span className="font-bold">{fmtMoney(stats.totalShuttleCost)}</span>
+              </div>
+              <div className="flex items-baseline justify-between">
+                <span className="text-xs text-muted-foreground">收費</span>
+                <span className="font-bold">{fmtMoney(stats.totalRevenue)}</span>
+              </div>
+              <div className="flex items-baseline justify-between">
+                <span className="text-xs text-muted-foreground">利潤</span>
+                <span className={`font-bold ${profitClass(stats.totalProfit)}`}>{profitLabel(stats.totalProfit)}</span>
+              </div>
+            </div>
           </div>
         )}
 
