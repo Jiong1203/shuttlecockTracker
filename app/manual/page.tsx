@@ -86,7 +86,29 @@ export default async function ManualPage() {
                 prose-a:text-blue-500 dark:prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline
                 prose-hr:border-border/60 prose-hr:my-6
                 prose-ul:pl-6 prose-ol:pl-6">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    // 圖片用 span（display:block）包裝，避免 <figure> 被塞進 <p> 造成無效巢狀
+                    img: ({ src, alt }) => (
+                      <span className="block my-5">
+                        {/* react-markdown 只提供 src/alt 字串，無法傳入 next/image；此處為本地 public 靜態圖，使用原生 img 為刻意設計 */}
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={typeof src === "string" ? src : ""}
+                          alt={alt || ""}
+                          loading="lazy"
+                          className="block w-full h-auto rounded-xl border border-border shadow-sm"
+                        />
+                        {alt ? (
+                          <span className="block text-center text-xs text-muted-foreground mt-2">
+                            {alt}
+                          </span>
+                        ) : null}
+                      </span>
+                    ),
+                  }}
+                >
                   {block.content}
                 </ReactMarkdown>
               </div>
