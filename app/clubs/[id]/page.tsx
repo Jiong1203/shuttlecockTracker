@@ -15,7 +15,7 @@ import { computeEventStats, groupByMonth } from "@/lib/event-stats"
 import { EventTrendChart } from "@/components/event-trend-chart"
 import {
   ChevronLeft, Plus, Loader2, Lock, CalendarDays,
-  BadgeCheck, Trash2, Sparkles, ClipboardList, ChevronDown, X,
+  BadgeCheck, Trash2, Sparkles, ClipboardList, ChevronDown, X, Wallet,
 } from "lucide-react"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -641,25 +641,29 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
 
         {/* 結算摘要 — mobile only；桌機的合計列在手機看不到，這裡補上結算導向的金額總結（含場租） */}
         {events.length > 0 && (
-          <div className="md:hidden rounded-lg border bg-muted/30 px-4 py-3">
-            <div className="text-[11px] font-semibold text-muted-foreground mb-2">結算摘要 · 共 {stats.count} 場</div>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-              <div className="flex items-baseline justify-between">
-                <span className="text-xs text-muted-foreground">場租</span>
-                <span className="font-bold">{fmtMoney(stats.totalVenueCost)}</span>
-              </div>
-              <div className="flex items-baseline justify-between">
-                <span className="text-xs text-muted-foreground">球費</span>
-                <span className="font-bold">{fmtMoney(stats.totalShuttleCost)}</span>
-              </div>
-              <div className="flex items-baseline justify-between">
-                <span className="text-xs text-muted-foreground">收費</span>
-                <span className="font-bold">{fmtMoney(stats.totalRevenue)}</span>
-              </div>
-              <div className="flex items-baseline justify-between">
-                <span className="text-xs text-muted-foreground">利潤</span>
-                <span className={`font-bold ${profitClass(stats.totalProfit)}`}>{profitLabel(stats.totalProfit)}</span>
-              </div>
+          <div className="md:hidden rounded-xl border border-blue-400/40 dark:border-blue-500/30 bg-gradient-to-br from-blue-500/10 via-blue-500/[0.04] to-purple-500/10 px-4 py-3.5 shadow-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-500/15 text-blue-600 dark:text-blue-400 shrink-0">
+                <Wallet className="w-3.5 h-3.5" />
+              </span>
+              <span className="text-sm font-bold">結算摘要</span>
+              <span className="text-xs text-muted-foreground">· 共 {stats.count} 場</span>
+            </div>
+            <div className="grid grid-cols-3 gap-2 mb-2.5">
+              {[
+                { label: '場租', value: fmtMoney(stats.totalVenueCost) },
+                { label: '球費', value: fmtMoney(stats.totalShuttleCost) },
+                { label: '收費', value: fmtMoney(stats.totalRevenue) },
+              ].map(item => (
+                <div key={item.label} className="rounded-lg bg-background/70 px-2.5 py-2">
+                  <div className="text-[11px] text-muted-foreground">{item.label}</div>
+                  <div className="text-sm font-bold mt-0.5">{item.value}</div>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center justify-between rounded-lg bg-background/80 border border-border/50 px-3 py-2.5">
+              <span className="text-xs font-semibold text-muted-foreground">累計利潤</span>
+              <span className={`text-lg font-black ${profitClass(stats.totalProfit)}`}>{profitLabel(stats.totalProfit)}</span>
             </div>
           </div>
         )}
