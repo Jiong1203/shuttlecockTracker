@@ -537,6 +537,8 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
   }[] = [
     { key: 'shuttle', label: '累計用球', value: `${stats.totalShuttleCount.toLocaleString()} 顆`,
       chart: { title: '每月用球量（顆）', accessor: e => e.shuttle_count ?? 0, format: v => `${v.toLocaleString()} 顆`, barClass: 'bg-sky-500' } },
+    { key: 'venue', label: '累計場租', value: fmtMoney(stats.totalVenueCost),
+      chart: { title: '每月場租', accessor: e => Number(e.venue_cost) || 0, format: fmtMoney, barClass: 'bg-purple-500' } },
     { key: 'shuttleCost', label: '累計球費', value: fmtMoney(stats.totalShuttleCost),
       chart: { title: '每月球費', accessor: e => Number(e.shuttle_cost) || 0, format: fmtMoney, barClass: 'bg-amber-500' } },
     { key: 'revenue', label: '累計收費', value: fmtMoney(stats.totalRevenue),
