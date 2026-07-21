@@ -51,6 +51,16 @@ interface LowStockItem {
   threshold: number
 }
 
+// 跳脫使用者可控字串（球種 brand/name、球團名稱），避免注入 HTML 破壞信件版面或植入連結
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 // 依球種低庫存清單組出通知信 HTML
 export function buildLowStockEmail(groupName: string, items: LowStockItem[]): { subject: string; html: string; text: string } {
   const subject = `【羽球庫存管家】${groupName} 有 ${items.length} 項球種庫存偏低`
@@ -62,7 +72,7 @@ export function buildLowStockEmail(groupName: string, items: LowStockItem[]): { 
       const color = isOut ? '#dc2626' : '#d97706'
       return `
         <tr>
-          <td style="padding:8px 12px;border-bottom:1px solid #eee;">${it.brand} ${it.name}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #eee;">${escapeHtml(it.brand)} ${escapeHtml(it.name)}</td>
           <td style="padding:8px 12px;border-bottom:1px solid #eee;color:${color};font-weight:600;">${stockLabel}</td>
           <td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;">${it.threshold} 桶</td>
         </tr>`
@@ -72,7 +82,7 @@ export function buildLowStockEmail(groupName: string, items: LowStockItem[]): { 
   const html = `
   <div style="font-family:-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;max-width:560px;margin:0 auto;color:#222;">
     <h2 style="font-size:18px;margin:0 0 4px;">🏸 低庫存提醒</h2>
-    <p style="color:#555;margin:0 0 16px;">球團「<strong>${groupName}</strong>」以下球種庫存已低於設定的安全門檻，建議盡快補貨：</p>
+    <p style="color:#555;margin:0 0 16px;">球團「<strong>${escapeHtml(groupName)}</strong>」以下球種庫存已低於設定的安全門檻，建議盡快補貨：</p>
     <table style="width:100%;border-collapse:collapse;font-size:14px;">
       <thead>
         <tr style="text-align:left;color:#888;font-size:12px;">
