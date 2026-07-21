@@ -7,14 +7,18 @@
 alter table "public"."shuttlecock_types"
   add column if not exists "low_stock_threshold" integer not null default 5;
 
--- 門檻不可為負
+-- 門檻不可為負（改為可重複執行，避免部分套用後重跑失敗）
+alter table "public"."shuttlecock_types"
+  drop constraint if exists "shuttlecock_types_low_stock_threshold_check";
 alter table "public"."shuttlecock_types"
   add constraint "shuttlecock_types_low_stock_threshold_check"
   check (low_stock_threshold >= 0) not valid;
 alter table "public"."shuttlecock_types"
   validate constraint "shuttlecock_types_low_stock_threshold_check";
 
--- 2) 更新 view，新增 st.low_stock_threshold 欄位（其餘定義與原本一致）
+-- 2) 更新 view，新增 low_stock_threshold 欄位
+--    注意：CREATE OR REPLACE VIEW 只允許在「最尾端」新增欄位，
+--    既有欄位的名稱與順序都必須維持不變，否則 Postgres 會誤判為欄位改名而報錯。
 create or replace view "public"."inventory_summary" as  WITH restock_stats AS (
          SELECT restock_records.shuttlecock_type_id,
             sum(restock_records.quantity) AS total_qty
@@ -31,10 +35,10 @@ create or replace view "public"."inventory_summary" as  WITH restock_stats AS (
     st.brand,
     st.name,
     st.is_active,
-    st.low_stock_threshold,
     COALESCE(rs.total_qty, (0)::bigint) AS total_restocked,
     COALESCE(ps.total_qty, (0)::bigint) AS total_picked,
-    (COALESCE(rs.total_qty, (0)::bigint) - COALESCE(ps.total_qty, (0)::bigint)) AS current_stock
+    (COALESCE(rs.total_qty, (0)::bigint) - COALESCE(ps.total_qty, (0)::bigint)) AS current_stock,
+    st.low_stock_threshold
    FROM (((public.groups g
      JOIN public.shuttlecock_types st ON ((g.id = st.group_id)))
      LEFT JOIN restock_stats rs ON ((st.id = rs.shuttlecock_type_id)))
