@@ -5,7 +5,7 @@
 A multi-tenant badminton inventory management SaaS built with Next.js 15 + Supabase.
 Live at: https://shuttlecock-tracker.vercel.app/
 
-Core features: inventory tracking, pickup registration, FIFO cost settlement, group management, event/club record tracking (開團紀錄).
+Core features: inventory tracking, pickup registration, FIFO cost settlement, group management, event/club record tracking (開團紀錄), low-stock email alerts (低庫存通知).
 
 ## Tech Stack
 
@@ -55,6 +55,8 @@ app/
         attendees/       # Attendee CRUD
           [aid]/
         shuttle-cost/    # POST: FIFO cost calculation
+    cron/
+      low-stock-alert/   # GET: daily Vercel Cron — scans all groups, emails low-stock alerts
   clubs/
     page.tsx             # Club list (full page, admin table style)
     [id]/page.tsx        # Club detail — events list + PIN gate
@@ -74,6 +76,7 @@ lib/
     server.ts    # Server Supabase client (cookie-based)
     helpers.ts   # Shared getGroupId() utility
   crypto.ts      # PBKDF2 PIN hashing (Web Crypto API, no extra packages)
+  email.ts       # Nodemailer + Gmail SMTP sender + low-stock email template
   utils.ts       # cn() Tailwind merge
 middleware.ts    # Auth guard — protects / and /clubs/* routes
 supabase/
@@ -140,6 +143,7 @@ supabase db push                        # push to linked project
 | `20260401070700_remote_schema.sql` | Baseline remote schema snapshot |
 | `20260401071611_add_club_event_tables.sql` | clubs, badminton_events, event_attendees tables + RLS + indexes |
 | `20260408000000_add_pickup_date_param.sql` | Adds `p_pickup_date` param to `insert_pickup_record` RPC (allows backdating a pickup; defaults to `NOW()`) |
+| `20260721000000_add_low_stock_threshold.sql` | Adds `low_stock_threshold` (default 5) to `shuttlecock_types`, exposes it in `inventory_summary` view, adds `low_stock_alerts` dedup table (for low-stock email module) |
 
 ### Legacy applied migrations (pre-CLI, via SQL Editor)
 
@@ -180,11 +184,33 @@ groups → clubs → badminton_events → event_attendees
 - Calls `POST /api/events/[id]/shuttle-cost` with quantity in 桶
 - Shows breakdown: `X 顆 ÷ 12 = Y.YY 桶` and per-piece cost
 
+## 低庫存 Email 通知模組（Low-Stock Alert）
+
+### Architecture
+- Daily **Vercel Cron** (`vercel.json` → `crons`, `0 1 * * *` = **09:00 台北 / 01:00 UTC**) hits `GET /api/cron/low-stock-alert`.
+- The route is **not** user-authenticated (no cookie in cron context). It validates `Authorization: Bearer <CRON_SECRET>` and uses a **service role client** to scan `inventory_summary` across all groups (bypasses RLS). Do NOT use `getGroupId()` here.
+- Email delivery: `lib/email.ts` — Nodemailer over Gmail SMTP (`smtp.gmail.com:465`, dedicated bot account). App Password spaces are stripped before auth.
+
+### Threshold
+- Per-type column `shuttlecock_types.low_stock_threshold` (int, default 5). Exposed via `inventory_summary` view — the view MUST carry this column or the cron can't read it.
+- Editable in `components/shuttlecock-type-manager.tsx` (per-card control) via `PATCH /api/inventory/types` with `{ low_stock_threshold }`. This update path is **independent of** the system-type brand/name edit gating — any type's threshold is editable.
+
+### Dedup (avoid daily re-spam)
+- `low_stock_alerts` table (PK = `shuttlecock_type_id`) records "already notified".
+- Each run: items now below threshold but **not** in the table → email + insert; items in the table that **recovered** (stock ≥ threshold) → deleted, so a future dip re-notifies. Already-alerted-still-low items are skipped.
+- A row is inserted **only after** a successful send. Groups with null `contact_email` are skipped (no row), so they get notified once they set an email. Preserve this "send-then-record" ordering.
+
+### Recipient
+- Sent to `groups.contact_email` (often null on legacy accounts). Null → skipped silently. `group-settings-dialog.tsx` prompts users to fill a real inbox.
+
 ## Environment Variables
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-SUPABASE_SERVICE_ROLE_KEY=...   # Used only in DELETE /api/group (admin operations)
+SUPABASE_SERVICE_ROLE_KEY=...   # DELETE /api/group + low-stock cron (scans all groups, bypasses RLS)
 NEXT_PUBLIC_SITE_URL=...
+GMAIL_USER=...                  # Dedicated Gmail for low-stock alerts (shuttlecock.tracker.bot@gmail.com)
+GMAIL_APP_PASSWORD=...          # Gmail App Password (NOT login password); spaces are stripped before use
+CRON_SECRET=...                 # Vercel Cron sends "Authorization: Bearer <CRON_SECRET>"; route rejects otherwise
 ```

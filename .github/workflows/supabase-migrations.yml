@@ -1,0 +1,34 @@
+name: 部署 Supabase migrations
+
+# 只在 push 到 main、且 supabase/migrations/ 內容有變動時才執行，
+# 避免每次一般部署都對正式 DB 動 schema。
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'supabase/migrations/**'
+  workflow_dispatch: {} # 允許在 GitHub Actions 頁面手動觸發
+
+jobs:
+  db-push:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      # 東京正式機 project ref（此值即出現在公開的 Supabase URL，非機密）
+      SUPABASE_PROJECT_ID: kdykjhykxbjkbqhwluyn
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link to Supabase project
+        run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
+
+      - name: Push migrations
+        run: supabase db push
