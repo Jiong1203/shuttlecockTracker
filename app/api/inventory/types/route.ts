@@ -9,7 +9,7 @@ interface TypeUpdate {
     brand?: string;
     name?: string;
     created_by?: string;
-
+    low_stock_threshold?: number;
 }
 
 export async function GET(request: Request) {
@@ -57,6 +57,7 @@ export async function GET(request: Request) {
             brand: item.brand,
             name: item.name,
             is_active: item.is_active,
+            low_stock_threshold: item.low_stock_threshold ?? 5,
             // 允許編輯的情況：僅限系統預設球種 (一旦編輯過變成使用者自定義球種後，即不可再編輯)
             // 這是為了讓舊用戶進行一次性的資料遷移
             can_edit: !item.created_by && item.brand === 'System' && item.name === '預設系統球種',
@@ -114,7 +115,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id, is_active, brand, name, update_historical_price } = await request.json()
+    const { id, is_active, brand, name, update_historical_price, low_stock_threshold } = await request.json()
 
     if (!id) {
       return NextResponse.json({ error: 'Missing type ID' }, { status: 400 })
@@ -123,6 +124,15 @@ export async function PATCH(request: Request) {
     // 更新內容準備
     const updates: TypeUpdate = {}
     if (is_active !== undefined) updates.is_active = is_active
+
+    // 低庫存門檻：所有球種皆可設定，不受 brand/name 的系統球種編輯限制約束
+    if (low_stock_threshold !== undefined) {
+      const threshold = Number(low_stock_threshold)
+      if (!Number.isInteger(threshold) || threshold < 0) {
+        return NextResponse.json({ error: '低庫存門檻必須為 0 或正整數' }, { status: 400 })
+      }
+      updates.low_stock_threshold = threshold
+    }
     
     // 獲取當前使用者資訊 (供後續檢查使用)
     const { data: { user } } = await supabase.auth.getUser()

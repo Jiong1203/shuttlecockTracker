@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Plus, X, Pencil, Loader2 } from "lucide-react"
+import { Plus, X, Pencil, Loader2, Bell, Check } from "lucide-react"
 import { showToast } from "@/components/ui/toast"
 
 interface ShuttlecockType {
@@ -14,6 +14,7 @@ interface ShuttlecockType {
   is_active: boolean
   can_edit: boolean
   has_records: boolean
+  low_stock_threshold: number
 }
 
 interface ShuttlecockTypeManagerProps {
@@ -35,6 +36,11 @@ export function ShuttlecockTypeManager({ onTypeAdded }: ShuttlecockTypeManagerPr
   const [editBrand, setEditBrand] = useState("")
   const [editName, setEditName] = useState("")
   const [editDefaultPrice, setEditDefaultPrice] = useState("")
+
+  // 低庫存門檻編輯狀態（每個球種皆可設定，獨立於上方編輯功能）
+  const [thresholdEditId, setThresholdEditId] = useState<string | null>(null)
+  const [thresholdValue, setThresholdValue] = useState("")
+  const [savingThresholdId, setSavingThresholdId] = useState<string | null>(null)
 
   const fetchTypes = async () => {
     setListLoading(true)
@@ -100,6 +106,41 @@ export function ShuttlecockTypeManager({ onTypeAdded }: ShuttlecockTypeManagerPr
       showToast("操作失敗", 'error')
     } finally {
       setTogglingId(null)
+    }
+  }
+
+  const handleStartThresholdEdit = (type: ShuttlecockType) => {
+    setThresholdEditId(type.id)
+    setThresholdValue(String(type.low_stock_threshold))
+  }
+
+  const handleSaveThreshold = async (id: string) => {
+    const value = parseInt(thresholdValue, 10)
+    if (isNaN(value) || value < 0) {
+      showToast("低庫存門檻必須為 0 或正整數", 'error')
+      return
+    }
+    setSavingThresholdId(id)
+    try {
+      const res = await fetch('/api/inventory/types', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, low_stock_threshold: value })
+      })
+      if (res.ok) {
+        setThresholdEditId(null)
+        await fetchTypes()
+        showToast(`已更新低庫存門檻為 ${value} 桶`, 'success')
+        if (onTypeAdded) onTypeAdded()
+      } else {
+        const data = await res.json()
+        showToast(data.error || "更新門檻失敗", 'error')
+      }
+    } catch (error) {
+      console.error(error)
+      showToast("更新門檻失敗", 'error')
+    } finally {
+      setSavingThresholdId(null)
     }
   }
 
@@ -345,6 +386,59 @@ export function ShuttlecockTypeManager({ onTypeAdded }: ShuttlecockTypeManagerPr
                                         type.is_active ? "首頁：顯示中" : "首頁：已隱藏"
                                     )}
                                 </Button>
+
+                                {/* 低庫存門檻設定：所有球種皆可設定 */}
+                                <div className="mt-2 flex items-center justify-between gap-2 text-xs">
+                                    <span className="flex items-center gap-1 text-muted-foreground">
+                                        <Bell className="h-3 w-3 text-amber-500" />
+                                        低庫存門檻
+                                    </span>
+                                    {thresholdEditId === type.id ? (
+                                        <div className="flex items-center gap-1">
+                                            <Input
+                                                type="number"
+                                                min={0}
+                                                value={thresholdValue}
+                                                onChange={e => setThresholdValue(e.target.value)}
+                                                className="h-7 w-16 text-xs px-2"
+                                                autoFocus
+                                            />
+                                            <span className="text-muted-foreground">桶</span>
+                                            <Button
+                                                size="icon"
+                                                className="h-7 w-7 bg-amber-500 hover:bg-amber-600"
+                                                onClick={() => handleSaveThreshold(type.id)}
+                                                disabled={savingThresholdId === type.id}
+                                            >
+                                                {savingThresholdId === type.id ? (
+                                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                                ) : (
+                                                    <Check className="h-3 w-3" />
+                                                )}
+                                                <span className="sr-only">儲存門檻</span>
+                                            </Button>
+                                            <Button
+                                                size="icon"
+                                                variant="ghost"
+                                                className="h-7 w-7"
+                                                onClick={() => setThresholdEditId(null)}
+                                                disabled={savingThresholdId === type.id}
+                                            >
+                                                <X className="h-3 w-3" />
+                                                <span className="sr-only">取消</span>
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleStartThresholdEdit(type)}
+                                            className="flex items-center gap-1 font-bold text-amber-600 hover:text-amber-700 hover:underline"
+                                        >
+                                            低於 {type.low_stock_threshold} 桶時通知
+                                            <Pencil className="h-2.5 w-2.5" />
+                                        </button>
+                                    )}
+                                </div>
                             </>
                         )}
                     </div>

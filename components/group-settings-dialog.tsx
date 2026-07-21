@@ -328,7 +328,9 @@ export function GroupSettingsDialog({ currentGroupName, onUpdateSuccess, open: c
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "更新"}
               </Button>
             </div>
-            <p className="text-[10px] text-slate-400 dark:text-slate-500">供未來開發相關通知或管理功能使用。</p>
+            <p className="text-[10px] text-amber-600 dark:text-amber-500">
+              📬 低庫存通知會寄到這個信箱。未填寫則不會收到補貨提醒，建議填寫真實可收信的信箱。
+            </p>
           </div>
 
           <hr className="border-slate-100" />
