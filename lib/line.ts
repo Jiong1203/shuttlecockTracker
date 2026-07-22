@@ -33,14 +33,15 @@ async function callLineApi(endpoint: string, body: unknown): Promise<void> {
 
 interface PushParams {
   to: string // 綁定的 LINE userId
-  text: string
+  text: string | string[] // 單則或多則（LINE 一次 push 最多 5 則）
 }
 
 // 主動推播（消耗官方帳號的推播額度）
 export async function pushLineMessage({ to, text }: PushParams): Promise<void> {
+  const texts = Array.isArray(text) ? text : [text]
   await callLineApi(PUSH_ENDPOINT, {
     to,
-    messages: [{ type: 'text', text }],
+    messages: texts.map((t) => ({ type: 'text', text: t })),
   })
 }
 
@@ -74,6 +75,18 @@ export function buildLowStockLineText(groupName: string, items: LowStockItem[]):
   return (
     `🏸 低庫存提醒\n` +
     `球團「${groupName}」以下球種庫存已低於安全門檻，建議盡快補貨：\n\n` +
-    lines.join('\n')
+    lines.join('\n') +
+    `\n\n👇 下一則是可直接轉傳給廠商的下訂訊息（長按即可轉傳，數量請自行填寫）`
+  )
+}
+
+// 組「可轉傳給廠商」的下訂訊息草稿：內容乾淨（不含門檻等內部資訊），數量留空由使用者發送前自行填寫
+export function buildOrderDraftLineText(items: LowStockItem[]): string {
+  const lines = items.map((it) => `・${it.brand} ${it.name} × ___ 桶`)
+
+  return (
+    `您好，想向貴店補貨以下羽球（數量再麻煩確認）：\n\n` +
+    lines.join('\n') +
+    `\n\n再請協助報價與安排出貨，謝謝！🙏`
   )
 }

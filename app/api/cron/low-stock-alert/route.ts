@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { sendEmail, buildLowStockEmail } from '@/lib/email'
-import { pushLineMessage, buildLowStockLineText } from '@/lib/line'
+import { pushLineMessage, buildLowStockLineText, buildOrderDraftLineText } from '@/lib/line'
 
 // cron 觸發、需繞過 RLS 掃描全部 group，因此必須動態執行
 export const dynamic = 'force-dynamic'
@@ -171,12 +171,12 @@ export async function GET(request: Request) {
       if (hasLine) {
         const lineItems = items.filter((it) => !lineDone(it.shuttlecock_type_id))
         if (lineItems.length > 0) {
-          const lineText = buildLowStockLineText(
-            group.name,
-            lineItems.map((it) => ({ brand: it.brand, name: it.name, currentStock: it.current_stock, threshold: it.low_stock_threshold }))
-          )
+          const itemsPayload = lineItems.map((it) => ({ brand: it.brand, name: it.name, currentStock: it.current_stock, threshold: it.low_stock_threshold }))
+          // 第 1 則：低庫存提醒；第 2 則：可長按轉傳給廠商的下訂訊息草稿（同一次 push）
+          const lineText = buildLowStockLineText(group.name, itemsPayload)
+          const orderDraft = buildOrderDraftLineText(itemsPayload)
           try {
-            await pushLineMessage({ to: group.line_user_id!, text: lineText })
+            await pushLineMessage({ to: group.line_user_id!, text: [lineText, orderDraft] })
             lineNotifiedGroups++
             lineSuccessIds.push(...lineItems.map((it) => it.shuttlecock_type_id))
           } catch (e) {
