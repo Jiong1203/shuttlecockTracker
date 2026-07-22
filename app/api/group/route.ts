@@ -1,13 +1,46 @@
 import { NextResponse } from 'next/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import { hashPin, verifyPin } from '@/lib/crypto'
 
 export const dynamic = "force-dynamic";
 
+const VERIFY_CODE_TTL_MS = 10 * 60 * 1000 // 驗證碼有效 10 分鐘
+
 interface GroupUpdates {
   name?: string;
   contact_email?: string;
   restock_password?: string | null;
+}
+
+// 建立 service role client（跨 group 檢查驗證碼碰撞需繞過 RLS）
+async function createAdminClient(): Promise<SupabaseClient> {
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  if (!serviceRoleKey || !supabaseUrl) {
+    throw new Error('系統配置錯誤：缺少 Service Role 設定')
+  }
+  const { createClient: create } = await import('@supabase/supabase-js')
+  return create(supabaseUrl, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  })
+}
+
+// 產生一組未與其他 group「未過期驗證碼」碰撞的 6 碼
+async function generateUniqueVerifyCode(admin: SupabaseClient): Promise<string> {
+  const nowIso = new Date().toISOString()
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const buf = crypto.getRandomValues(new Uint32Array(1))
+    const code = String(buf[0] % 1000000).padStart(6, '0')
+    const { data } = await admin
+      .from('groups')
+      .select('id')
+      .eq('line_verify_code', code)
+      .gt('line_verify_expires_at', nowIso)
+      .limit(1)
+    if (!data || data.length === 0) return code
+  }
+  throw new Error('驗證碼產生失敗，請稍後再試')
 }
 
 export async function GET() {
@@ -31,7 +64,7 @@ export async function GET() {
 
     const { data: group, error } = await supabase
       .from('groups')
-      .select('name, contact_email, restock_password')
+      .select('name, contact_email, restock_password, line_enabled, line_user_id')
       .eq('id', profile.group_id)
       .single()
 
@@ -40,7 +73,9 @@ export async function GET() {
     return NextResponse.json({
       name: group.name,
       contactEmail: group.contact_email || "",
-      hasRestockPassword: !!group.restock_password
+      hasRestockPassword: !!group.restock_password,
+      lineEnabled: !!group.line_enabled,
+      lineBound: !!group.line_user_id,
     })
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Internal Server Error'
@@ -57,7 +92,49 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { name, contactEmail, restockPassword, currentRestockPassword } = await request.json()
+    const { name, contactEmail, restockPassword, currentRestockPassword, lineAction } = await request.json()
+
+    // --- LINE 通知綁定相關操作（獨立分支，處理完即回傳）---
+    if (lineAction !== undefined) {
+      const { data: lineProfile } = await supabase
+        .from('profiles')
+        .select('group_id')
+        .eq('id', user.id)
+        .single()
+
+      if (!lineProfile?.group_id) {
+        return NextResponse.json({ error: 'No group assigned' }, { status: 404 })
+      }
+
+      const admin = await createAdminClient()
+
+      if (lineAction === 'enable' || lineAction === 'regenerate') {
+        const code = await generateUniqueVerifyCode(admin)
+        const expiresAt = new Date(Date.now() + VERIFY_CODE_TTL_MS).toISOString()
+        const { error: codeError } = await admin
+          .from('groups')
+          .update({ line_enabled: true, line_verify_code: code, line_verify_expires_at: expiresAt })
+          .eq('id', lineProfile.group_id)
+        if (codeError) throw codeError
+        return NextResponse.json({ code, expiresAt })
+      }
+
+      if (lineAction === 'unbind') {
+        const { error: unbindError } = await admin
+          .from('groups')
+          .update({
+            line_enabled: false,
+            line_user_id: null,
+            line_verify_code: null,
+            line_verify_expires_at: null,
+          })
+          .eq('id', lineProfile.group_id)
+        if (unbindError) throw unbindError
+        return NextResponse.json({ message: '已解除 LINE 綁定' })
+      }
+
+      return NextResponse.json({ error: '未知的 LINE 操作' }, { status: 400 })
+    }
 
     if (contactEmail !== undefined && contactEmail !== "") {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/

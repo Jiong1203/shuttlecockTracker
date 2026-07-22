@@ -13,8 +13,11 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Settings, ShieldCheck, KeyRound, Type, Loader2, Mail, AlertTriangle } from "lucide-react"
+import { Settings, ShieldCheck, KeyRound, Type, Loader2, Mail, AlertTriangle, MessageCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
+
+// 官方帳號 Basic ID（供使用者手動搜尋加好友）；QR 圖為 public/ 靜態資源
+const LINE_BASIC_ID = process.env.NEXT_PUBLIC_LINE_BASIC_ID || ""
 
 interface GroupSettingsDialogProps {
   currentGroupName: string
@@ -43,6 +46,9 @@ export function GroupSettingsDialog({ currentGroupName, onUpdateSuccess, open: c
   const [restockStep, setRestockStep] = useState<'info' | 'verify' | 'update'>('info')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteConfirmName, setDeleteConfirmName] = useState("")
+  // LINE 通知綁定
+  const [lineBound, setLineBound] = useState(false)
+  const [lineCode, setLineCode] = useState<string | null>(null)
   const router = useRouter()
 
   // Fetch current detailed settings when opening
@@ -58,6 +64,7 @@ export function GroupSettingsDialog({ currentGroupName, onUpdateSuccess, open: c
       setRestockStep('info')
       setShowDeleteConfirm(false)
       setDeleteConfirmName("")
+      setLineCode(null)
     }
   }, [open, currentGroupName])
 
@@ -69,6 +76,7 @@ export function GroupSettingsDialog({ currentGroupName, onUpdateSuccess, open: c
       if (data.name) setNewName(data.name)
       if (data.contactEmail) setContactEmail(data.contactEmail)
       setHasRestockPassword(data.hasRestockPassword)
+      setLineBound(!!data.lineBound)
     } catch (error) {
       console.error("Failed to fetch settings:", error)
     } finally {
@@ -208,6 +216,33 @@ export function GroupSettingsDialog({ currentGroupName, onUpdateSuccess, open: c
     }
   }
 
+  const handleLineAction = async (lineAction: 'enable' | 'regenerate' | 'unbind') => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/group', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lineAction })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || '操作失敗')
+
+      if (lineAction === 'unbind') {
+        setLineBound(false)
+        setLineCode(null)
+        alert('已解除 LINE 綁定')
+      } else {
+        // enable / regenerate：顯示新產生的驗證碼供使用者輸入
+        setLineCode(data.code)
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : '操作失敗'
+      alert(message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleDeleteGroup = async () => {
     if (deleteConfirmName !== currentGroupName) return
     setLoading(true)
@@ -331,6 +366,83 @@ export function GroupSettingsDialog({ currentGroupName, onUpdateSuccess, open: c
             <p className="text-[10px] text-amber-600 dark:text-amber-500">
               📬 低庫存通知會寄到這個信箱。未填寫則不會收到補貨提醒，建議填寫真實可收信的信箱。
             </p>
+          </div>
+
+          <hr className="border-slate-100" />
+
+          {/* LINE Notification Section */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2 text-foreground font-bold">
+              <MessageCircle className="w-4 h-4 text-green-600" /> LINE 低庫存通知
+            </Label>
+
+            <div className="settings-card p-4 rounded-xl border">
+              {lineBound ? (
+                // 已綁定
+                <div className="flex flex-col items-center gap-3">
+                  <span className="status-badge-success px-2 py-0.5 rounded border text-sm font-medium">
+                    已綁定 LINE 通知 ✅
+                  </span>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 text-center">
+                    庫存偏低時，系統會透過 LINE 官方帳號推播提醒。
+                  </p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-500 hover:text-red-700"
+                    onClick={() => handleLineAction('unbind')}
+                    disabled={loading}
+                  >
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "解除綁定"}
+                  </Button>
+                </div>
+              ) : lineCode ? (
+                // 已產生驗證碼，等待使用者加好友並輸入
+                <div className="flex flex-col items-center gap-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/line-add-friend.png"
+                    alt="加 LINE 官方帳號好友 QR Code"
+                    className="w-36 h-36 rounded-lg border bg-white object-contain"
+                  />
+                  {LINE_BASIC_ID && (
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      或搜尋 LINE ID：<span className="font-mono font-bold">{LINE_BASIC_ID}</span>
+                    </p>
+                  )}
+                  <div className="text-center">
+                    <p className="text-[10px] text-slate-400 mb-1">加好友後，在聊天室輸入以下驗證碼：</p>
+                    <p className="text-3xl font-mono font-bold tracking-[0.3em] text-green-600">{lineCode}</p>
+                    <p className="text-[10px] text-amber-600 dark:text-amber-500 mt-1">驗證碼 10 分鐘內有效</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full settings-button"
+                    onClick={() => handleLineAction('regenerate')}
+                    disabled={loading}
+                  >
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "重新產生驗證碼"}
+                  </Button>
+                </div>
+              ) : (
+                // 未啟用
+                <div className="flex flex-col items-center gap-3">
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 text-center">
+                    除了 Email，也可綁定 LINE 官方帳號，低庫存時直接收到 LINE 通知。
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full settings-button"
+                    onClick={() => handleLineAction('enable')}
+                    disabled={loading || isLoadingSettings}
+                  >
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "開啟 LINE 通知"}
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
 
           <hr className="border-slate-100" />

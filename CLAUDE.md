@@ -144,6 +144,7 @@ supabase db push                        # push to linked project
 | `20260401071611_add_club_event_tables.sql` | clubs, badminton_events, event_attendees tables + RLS + indexes |
 | `20260408000000_add_pickup_date_param.sql` | Adds `p_pickup_date` param to `insert_pickup_record` RPC (allows backdating a pickup; defaults to `NOW()`) |
 | `20260721000000_add_low_stock_threshold.sql` | Adds `low_stock_threshold` (default 5) to `shuttlecock_types`, exposes it in `inventory_summary` view, adds `low_stock_alerts` dedup table (for low-stock email module) |
+| `20260722000000_add_line_notification.sql` | Adds LINE binding columns to `groups` (`line_enabled`, `line_user_id`, `line_verify_code`, `line_verify_expires_at`) + partial index on verify code; adds per-channel dedup columns (`email_notified_at`, `line_notified_at`) to `low_stock_alerts` and backfills `email_notified_at` from legacy `notified_at` |
 
 ### Legacy applied migrations (pre-CLI, via SQL Editor)
 
@@ -195,22 +196,49 @@ groups → clubs → badminton_events → event_attendees
 - Per-type column `shuttlecock_types.low_stock_threshold` (int, default 5). Exposed via `inventory_summary` view — the view MUST carry this column or the cron can't read it.
 - Editable in `components/shuttlecock-type-manager.tsx` (per-card control) via `PATCH /api/inventory/types` with `{ low_stock_threshold }`. This update path is **independent of** the system-type brand/name edit gating — any type's threshold is editable.
 
-### Dedup (avoid daily re-spam)
-- `low_stock_alerts` table (PK = `shuttlecock_type_id`) records "already notified".
-- Each run: items now below threshold but **not** in the table → email + insert; items in the table that **recovered** (stock ≥ threshold) → deleted, so a future dip re-notifies. Already-alerted-still-low items are skipped.
-- A row is inserted **only after** a successful send. Groups with null `contact_email` are skipped (no row), so they get notified once they set an email. Preserve this "send-then-record" ordering.
+### Dedup (avoid daily re-spam) — **per-channel** (email / LINE)
+- `low_stock_alerts` (PK = `shuttlecock_type_id`) has **two** timestamps: `email_notified_at`, `line_notified_at`. A channel counts as "already notified" only when **its own** column is non-null.
+- Each run, per low-stock type **per channel**: if the group has that channel's target AND that channel's timestamp is null → send + stamp that column. Already-stamped channels are skipped. This means a type can notify LINE today and email tomorrow (e.g. if email was added later), without double-sending either.
+- **Recovery**: a type that is `is_active` and back to `stock ≥ threshold` → the **whole row is deleted** (both channels reset), so a future dip re-notifies on all channels.
+- Timestamps are written **only after a successful send** (send-then-record). Groups with **neither** channel configured are skipped entirely (no row), so they get notified once they set a target. Preserve this ordering.
+- **Partial-upsert gotcha**: email and LINE successes are written in **two separate `upsert` calls** (each with a uniform column set). Do NOT merge them into one mixed-key array — PostgREST fills missing keys with null and would wipe the other channel's timestamp.
 
-### Recipient
-- Sent to `groups.contact_email` (often null on legacy accounts). Null → skipped silently. `group-settings-dialog.tsx` prompts users to fill a real inbox.
+### Recipients (two independent channels)
+- **Email** → `groups.contact_email` (often null on legacy accounts). Null → email channel skipped.
+- **LINE** → `groups.line_user_id` when `line_enabled` is true. Not bound → LINE channel skipped. See LINE module below.
+- `group-settings-dialog.tsx` prompts users to fill an inbox and/or bind LINE.
+
+## LINE 低庫存通知模組（Low-Stock LINE Alert）
+
+### Architecture
+- Second notification channel alongside email; **not** LINE Notify (discontinued 2025-03-31) — uses the **LINE Messaging API** with a single shared **Official Account**.
+- `lib/line.ts` — `pushLineMessage` (Push API, consumes quota) / `replyLineMessage` (Reply API, free, uses webhook `replyToken`) / `buildLowStockLineText` (plain-text, LINE has no HTML). Calls Messaging API via `fetch`, Bearer `LINE_CHANNEL_ACCESS_TOKEN`. No SDK.
+- The cron pushes LINE alongside email in the same per-group loop (see per-channel dedup above).
+
+### Account binding flow (user links their group to a LINE userId)
+1. Settings dialog (`group-settings-dialog.tsx`) → "開啟 LINE 通知" → `PATCH /api/group` with `{ lineAction: 'enable' }` → server generates a **6-digit code** (collision-checked vs other groups' unexpired codes) with a **10-min expiry**, stores on `groups`.
+2. UI shows the OA add-friend QR (`public/line-add-friend.png` static asset) + `NEXT_PUBLIC_LINE_BASIC_ID` + the code.
+3. User adds the OA and sends the code in chat → LINE hits `POST /api/line/webhook`.
+4. Webhook (`app/api/line/webhook/route.ts`): verifies `x-line-signature` (HMAC-SHA256 over the **raw body** with `LINE_CHANNEL_SECRET`, Web Crypto, timing-safe compare) → matches the code against unexpired `groups.line_verify_code` via **service role** (no cookie) → writes `line_user_id`, clears the code, replies "綁定成功".
+5. `lineAction: 'unbind'` clears `line_user_id` + disables.
+
+### Gotchas
+- Webhook MUST read `request.text()` (raw string) for signature verification — parsing then re-stringifying breaks the HMAC.
+- Webhook always returns 200 (except 401 on bad signature) so LINE won't retry-storm; errors are logged.
+- LINE Console: set Webhook URL = `https://shuttlecock-tracker.vercel.app/api/line/webhook`, **enable webhook**, and **disable auto-reply messages** (else the OA's canned reply masks the binding response).
+- `middleware.ts` does not guard `/api/*`, so the webhook is reachable unauthenticated (intended — it self-authenticates via signature).
 
 ## Environment Variables
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-SUPABASE_SERVICE_ROLE_KEY=...   # DELETE /api/group + low-stock cron (scans all groups, bypasses RLS)
+SUPABASE_SERVICE_ROLE_KEY=...   # DELETE /api/group + low-stock cron + LINE webhook (bypass RLS)
 NEXT_PUBLIC_SITE_URL=...
 GMAIL_USER=...                  # Dedicated Gmail for low-stock alerts (shuttlecock.tracker.bot@gmail.com)
 GMAIL_APP_PASSWORD=...          # Gmail App Password (NOT login password); spaces are stripped before use
 CRON_SECRET=...                 # Vercel Cron sends "Authorization: Bearer <CRON_SECRET>"; route rejects otherwise
+LINE_CHANNEL_ACCESS_TOKEN=...   # LINE Messaging API push/reply (低庫存 LINE 通知)
+LINE_CHANNEL_SECRET=...         # LINE webhook signature verification (x-line-signature HMAC-SHA256)
+NEXT_PUBLIC_LINE_BASIC_ID=...   # OA Basic ID (@xxxx), shown in settings dialog for manual add-friend search
 ```
