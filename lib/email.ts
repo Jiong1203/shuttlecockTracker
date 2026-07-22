@@ -38,9 +38,15 @@ export async function sendEmail({ to, subject, html, text }: SendEmailParams): P
   await transporter.sendMail({
     from: `羽球庫存管家 <${from}>`,
     to,
+    replyTo: from,
     subject,
     html,
     text,
+    headers: {
+      // 讓信件被視為正規的自動通知信而非垃圾/廣告，降低被判垃圾郵件的機率
+      'List-Unsubscribe': `<mailto:${from}?subject=unsubscribe>`,
+      'Auto-Submitted': 'auto-generated',
+    },
   })
 }
 
