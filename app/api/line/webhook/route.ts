@@ -1,16 +1,73 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import { replyLineMessage } from '@/lib/line'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { replyLineMessage, buildOrderDraftLineText } from '@/lib/line'
 
 // webhook 需讀原始 body 與 header、以 service role 跨 group 反查，必須動態執行
 export const dynamic = 'force-dynamic'
 
 // LINE 傳來的 webhook 事件（僅取用到的欄位）
-interface LineMessageEvent {
+interface LineEvent {
   type: string
   replyToken?: string
   source?: { userId?: string }
   message?: { type: string; text?: string }
+  postback?: { data?: string }
+}
+
+interface InvRow {
+  brand: string
+  name: string
+  is_active: boolean
+  total_restocked: number
+  low_stock_threshold: number
+  current_stock: number
+}
+
+// 點擊「產生下訂訊息」按鈕（postback）→ 以即時庫存重算低庫存清單，免費 reply 下訂草稿
+async function handleOrderDraft(
+  admin: SupabaseClient,
+  gid: string | null,
+  userId: string,
+  replyToken: string
+): Promise<void> {
+  try {
+    if (!gid) return
+
+    const { data: group } = await admin
+      .from('groups')
+      .select('id, line_user_id')
+      .eq('id', gid)
+      .single()
+
+    // 驗證點擊者確實是該 group 所綁定的 userId（postback data 可被偽造，需比對）
+    if (!group || group.line_user_id !== userId) {
+      await replyLineMessage({ replyToken, text: '找不到綁定資料，請回設定頁重新綁定。' })
+      return
+    }
+
+    const { data: inv } = await admin
+      .from('inventory_summary')
+      .select('brand, name, is_active, total_restocked, low_stock_threshold, current_stock')
+      .eq('group_id', gid)
+      .returns<InvRow[]>()
+
+    const low = (inv ?? []).filter(
+      (r) => r.is_active && r.total_restocked > 0 && r.current_stock < r.low_stock_threshold
+    )
+
+    if (low.length === 0) {
+      await replyLineMessage({ replyToken, text: '目前所有球種庫存都在安全門檻以上，無需下訂 👍' })
+      return
+    }
+
+    const draft = buildOrderDraftLineText(
+      low.map((r) => ({ brand: r.brand, name: r.name, currentStock: r.current_stock, threshold: r.low_stock_threshold }))
+    )
+    await replyLineMessage({ replyToken, text: draft })
+  } catch (e) {
+    console.error('產生下訂草稿失敗:', e)
+    await replyLineMessage({ replyToken, text: '產生下訂訊息失敗，請稍後再試。' }).catch(() => {})
+  }
 }
 
 // 以 Channel Secret 對「原始 body 字串」做 HMAC-SHA256 → base64，與 x-line-signature 比對。
@@ -68,18 +125,27 @@ export async function POST(request: Request) {
   })
 
   try {
-    const body = JSON.parse(rawBody) as { events?: LineMessageEvent[] }
+    const body = JSON.parse(rawBody) as { events?: LineEvent[] }
     const events = body.events ?? []
 
     // LINE 在設定 webhook URL 時會送空 events 的驗證請求 → 直接回 200
     for (const event of events) {
-      if (event.type !== 'message' || event.message?.type !== 'text') continue
-
       const userId = event.source?.userId
       const replyToken = event.replyToken
-      const text = (event.message.text ?? '').trim()
-
       if (!userId || !replyToken) continue
+
+      // 綁定後點擊「產生下訂訊息」按鈕（postback）
+      if (event.type === 'postback') {
+        const params = new URLSearchParams(event.postback?.data ?? '')
+        if (params.get('action') === 'order_draft') {
+          await handleOrderDraft(admin, params.get('gid'), userId, replyToken)
+        }
+        continue
+      }
+
+      // 以下僅處理文字訊息（驗證碼綁定）
+      if (event.type !== 'message' || event.message?.type !== 'text') continue
+      const text = (event.message.text ?? '').trim()
 
       // 僅處理 6 碼數字驗證碼，其餘文字給固定說明
       if (!/^\d{6}$/.test(text)) {

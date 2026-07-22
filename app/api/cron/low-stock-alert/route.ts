@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { sendEmail, buildLowStockEmail } from '@/lib/email'
-import { pushLineMessage, buildLowStockLineText, buildOrderDraftLineText } from '@/lib/line'
+import { pushLineMessages, buildLowStockFlexMessage } from '@/lib/line'
 
 // cron 觸發、需繞過 RLS 掃描全部 group，因此必須動態執行
 export const dynamic = 'force-dynamic'
@@ -172,11 +172,10 @@ export async function GET(request: Request) {
         const lineItems = items.filter((it) => !lineDone(it.shuttlecock_type_id))
         if (lineItems.length > 0) {
           const itemsPayload = lineItems.map((it) => ({ brand: it.brand, name: it.name, currentStock: it.current_stock, threshold: it.low_stock_threshold }))
-          // 第 1 則：低庫存提醒；第 2 則：可長按轉傳給廠商的下訂訊息草稿（同一次 push）
-          const lineText = buildLowStockLineText(group.name, itemsPayload)
-          const orderDraft = buildOrderDraftLineText(itemsPayload)
+          // 只主動 push 一則帶「產生下訂訊息」按鈕的 Flex；下訂草稿由使用者點按後經 webhook 免費 reply
+          const flex = buildLowStockFlexMessage(group.name, itemsPayload, gid)
           try {
-            await pushLineMessage({ to: group.line_user_id!, text: [lineText, orderDraft] })
+            await pushLineMessages({ to: group.line_user_id!, messages: [flex] })
             lineNotifiedGroups++
             lineSuccessIds.push(...lineItems.map((it) => it.shuttlecock_type_id))
           } catch (e) {
