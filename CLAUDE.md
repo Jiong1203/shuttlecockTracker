@@ -212,8 +212,12 @@ groups → clubs → badminton_events → event_attendees
 
 ### Architecture
 - Second notification channel alongside email; **not** LINE Notify (discontinued 2025-03-31) — uses the **LINE Messaging API** with a single shared **Official Account**.
-- `lib/line.ts` — `pushLineMessage` (Push API, consumes quota) / `replyLineMessage` (Reply API, free, uses webhook `replyToken`) / `buildLowStockLineText` (plain-text, LINE has no HTML). Calls Messaging API via `fetch`, Bearer `LINE_CHANNEL_ACCESS_TOKEN`. No SDK.
+- `lib/line.ts` — `pushLineMessage` (Push text) / `pushLineMessages` (Push arbitrary message objects, e.g. Flex) / `replyLineMessage` (Reply API, **free**, uses webhook `replyToken`) / `buildLowStockLineText` (plain-text, LINE has no HTML) / `buildLowStockFlexMessage` (Flex bubble w/ postback button) / `buildOrderDraftLineText`. Calls Messaging API via `fetch`, Bearer `LINE_CHANNEL_ACCESS_TOKEN`. No SDK.
 - The cron pushes LINE alongside email in the same per-group loop (see per-channel dedup above).
+
+### Low-stock message & on-demand order draft (cost-aware)
+- Cron sends **one** Flex message (via `pushLineMessages`) = the low-stock alert **plus a "產生下訂訊息" postback button**. Only 1 push/quota per alert — the order draft is NOT pushed proactively.
+- Button carries `postback.data = "action=order_draft&gid=<group_id>"`. When tapped, LINE sends a **postback event** to the webhook → `handleOrderDraft` re-scans `inventory_summary` for that group's **current** low-stock items and **replies** (free) with `buildOrderDraftLineText` (clean, forwardable, quantity left blank for manual fill). Security: verifies the tapper's `userId` matches the group's bound `line_user_id` before replying.
 
 ### Account binding flow (user links their group to a LINE userId)
 1. Settings dialog (`group-settings-dialog.tsx`) → "開啟 LINE 通知" → `PATCH /api/group` with `{ lineAction: 'enable' }` → server generates a **6-digit code** (collision-checked vs other groups' unexpired codes) with a **10-min expiry**, stores on `groups`.
