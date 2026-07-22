@@ -121,7 +121,7 @@ export function buildLowStockFlexMessage(groupName: string, items: LowStockItem[
 
 // 組「可轉傳給廠商」的下訂訊息草稿：內容乾淨（不含門檻等內部資訊），數量留空由使用者發送前自行填寫
 export function buildOrderDraftLineText(items: LowStockItem[]): string {
-  const lines = items.map((it) => `・${it.brand} ${it.name} × ___ 桶`)
+  const lines = items.map((it) => `・${it.brand} ${it.name} × ___ 箱`)
 
   return (
     `您好，想向貴店補貨以下羽球（數量再麻煩確認）：\n\n` +
