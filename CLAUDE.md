@@ -57,16 +57,25 @@ app/
         shuttle-cost/    # POST: FIFO cost calculation
     cron/
       low-stock-alert/   # GET: daily Vercel Cron — scans all groups, emails low-stock alerts
-  clubs/
-    page.tsx             # Club list (full page, admin table style)
-    [id]/page.tsx        # Club detail — events list + PIN gate
+  (app)/                 # Route group — shared admin shell (sidebar + topbar); URLs unchanged
+    layout.tsx           # Server layout → fetches group, renders <AppShell>
+    loading.tsx          # Route-transition loading UI (Suspense fallback)
+    page.tsx             # Home dashboard (Server Component — fetches data server-side)
+    client-wrapper.tsx   # 'use client' boundary; dynamic()-imports interactive parts by `variant`
+    home-interactive.tsx # Client-side interactions + InventoryManagerDialog
+    settings/
+      page.tsx           # Account settings — standalone page (uses GroupSettingsForm)
+    clubs/
+      page.tsx           # Club list (full page, admin table style)
+      [id]/page.tsx      # Club detail — events list + PIN gate
   actions/               # Server Actions (auth logging)
-  login/                 # Login / sign-up page
-  page.tsx               # Home (Server Component — fetches data server-side)
-  client-wrapper.tsx     # 'use client' boundary; dynamic()-imports interactive parts by `variant`
-  home-interactive.tsx   # Client-side interactions + InventoryManagerDialog
+  login/                 # Login / sign-up page (outside (app) — no shell)
 components/
   ui/                    # Shadcn base components + Toast system
+  app-shell.tsx          # Admin shell: sidebar container + topbar (breadcrumb, collapse, mobile drawer)
+  app-sidebar.tsx        # Fixed dark-green sidebar (nav + group name / settings / logout / theme)
+  inventory-stats.tsx    # Home KPI summary row (4 stat cards)
+  group-settings-form.tsx  # Account settings form — shared by /settings page & GroupSettingsDialog
   event-detail-dialog.tsx  # Event detail: attendees, FIFO calculator, settlement
   event-tracker-dialog.tsx # Header button → link to /clubs
   *.tsx                  # Other feature components (pickup, restock, settlement, etc.)
@@ -87,9 +96,13 @@ docs/
   PRD-venue-session-module.md # Product spec
 ```
 
+### App shell (sidebar) & route group
+- `app/(app)/layout.tsx` is a **Server Component** that fetches the current group (name + contact_email) and wraps all pages in `<AppShell>` (`components/app-shell.tsx`) — a fixed dark-green sidebar + topbar (breadcrumb, collapse, mobile drawer). `/`, `/settings`, `/clubs`, `/clubs/[id]` all live inside `(app)` and share this shell; `/login` and `/manual` stay outside it. The `(app)` group does **not** change URLs.
+- Header controls (settings / logout / theme) live in `app-sidebar.tsx`; account settings is a standalone page at `/settings`, not a dialog. `HomeHeaderControls` in `home-interactive.tsx` is legacy/unused (the old top toolbar) but still compiles.
+
 ### Home page data flow (Server → Client split)
-- `app/page.tsx` is a **Server Component**: it reads the session from cookies (`getSession()`, no extra network round-trip since middleware already validated), fetches `inventory_summary` + `pickup_records` in parallel, and passes them down as props.
-- `client-wrapper.tsx` is the `'use client'` boundary. It renders different interactive trees by `variant`: `"header"` → `HomeHeaderControls` (toolbar buttons), `"content"` → `HomeInteractive` (+ `WelcomeGuide` when `totalCurrentStock === 0`). Interactive children are `dynamic()`-imported and wrapped in `<Suspense>` with skeleton fallbacks.
+- `app/(app)/page.tsx` is a **Server Component**: it reads the session from cookies (`getSession()`, no extra network round-trip since middleware already validated), fetches `inventory_summary` + `pickup_records` (+ a scoped monthly-pickup query for the KPI row) in parallel, and passes them down as props. It renders `<InventoryStats>` (KPI row) above the inventory display.
+- `client-wrapper.tsx` is the `'use client'` boundary. It renders different interactive trees by `variant`: `"content"` → `HomeInteractive` (+ `WelcomeGuide` when `totalCurrentStock === 0`). Interactive children are `dynamic()`-imported and wrapped in `<Suspense>` with skeleton fallbacks.
 
 ## Key Conventions
 
