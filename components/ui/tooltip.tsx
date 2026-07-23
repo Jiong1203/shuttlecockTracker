@@ -44,10 +44,18 @@ function Tooltip({
   side?: 'top' | 'bottom' | 'left' | 'right'
   delayDuration?: number
 }) {
+  // 受控 open：當 trigger 觸發開窗（Dialog / DropdownMenu）時，Modal 遮罩會蓋住畫面，
+  // 導致 trigger 收不到 pointerleave，tooltip 就卡住不消失。點擊時強制關閉可解決此問題。
+  const [open, setOpen] = React.useState(false)
   return (
-    <TooltipRoot delayDuration={delayDuration}>
+    <TooltipRoot open={open} onOpenChange={setOpen} delayDuration={delayDuration}>
       <TooltipTrigger asChild>
-        <span className="inline-flex">{children}</span>
+        <span
+          className="inline-flex"
+          onClick={() => setOpen(false)}
+        >
+          {children}
+        </span>
       </TooltipTrigger>
       <TooltipContent side={side}>{label}</TooltipContent>
     </TooltipRoot>
