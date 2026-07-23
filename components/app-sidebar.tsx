@@ -68,7 +68,7 @@ export function AppSidebar({ group, collapsed, onNavigate }: AppSidebarProps) {
         {!collapsed && (
           <div className="min-w-0">
             <div className="truncate text-sm font-semibold text-white">羽球庫存管理</div>
-            <div className="text-[10px] uppercase tracking-[0.15em] text-[#6E7A72]">ShuttleTracker</div>
+            <div className="whitespace-nowrap text-[10px] uppercase tracking-[0.08em] text-[#6E7A72]">Shuttlecock Tracker</div>
           </div>
         )}
       </div>
