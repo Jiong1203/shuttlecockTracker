@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Settings, ShieldCheck, KeyRound, Type, Loader2, Mail, AlertTriangle, MessageCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { cn } from "@/lib/utils"
 
 // 官方帳號 Basic ID（供使用者手動搜尋加好友）；QR 圖為 public/ 靜態資源
 const LINE_BASIC_ID = process.env.NEXT_PUBLIC_LINE_BASIC_ID || ""
@@ -38,8 +39,12 @@ export function GroupSettingsDialog({ currentGroupName, initialContactEmail = ""
   const [isLoadingSettings, setIsLoadingSettings] = useState(false)
   
   // States for form
+  // 一次只展開一個編輯輸入框，其餘維持精簡狀態列
+  const [activeEdit, setActiveEdit] = useState<null | 'name' | 'password' | 'email'>(null)
   const [newName, setNewName] = useState(currentGroupName)
+  const [committedName, setCommittedName] = useState(currentGroupName)
   const [contactEmail, setContactEmail] = useState(initialContactEmail)
+  const [committedEmail, setCommittedEmail] = useState(initialContactEmail)
   const [newLoginPassword, setNewLoginPassword] = useState("")
   const [currentRestockPassword, setCurrentRestockPassword] = useState("")
   const [newRestockPassword, setNewRestockPassword] = useState("")
@@ -57,8 +62,11 @@ export function GroupSettingsDialog({ currentGroupName, initialContactEmail = ""
     if (open) {
       fetchSettings()
       // 如果 props 已經更新了，就先用 props 的（避免開窗時信箱欄空白閃爍，等 fetch 回來才補值）
+      setActiveEdit(null)
       setNewName(currentGroupName)
+      setCommittedName(currentGroupName)
       setContactEmail(initialContactEmail)
+      setCommittedEmail(initialContactEmail)
       setNewLoginPassword("")
       setCurrentRestockPassword("")
       setNewRestockPassword("")
@@ -74,8 +82,8 @@ export function GroupSettingsDialog({ currentGroupName, initialContactEmail = ""
     try {
       const res = await fetch('/api/group')
       const data = await res.json()
-      if (data.name) setNewName(data.name)
-      if (data.contactEmail) setContactEmail(data.contactEmail)
+      if (data.name) { setNewName(data.name); setCommittedName(data.name) }
+      if (data.contactEmail) { setContactEmail(data.contactEmail); setCommittedEmail(data.contactEmail) }
       setHasRestockPassword(data.hasRestockPassword)
       setLineBound(!!data.lineBound)
     } catch (error) {
@@ -86,7 +94,7 @@ export function GroupSettingsDialog({ currentGroupName, initialContactEmail = ""
   }
 
   const handleUpdateGroupName = async () => {
-    if (!newName || newName === currentGroupName) return
+    if (!newName || newName === committedName) return
     setLoading(true)
     try {
       const res = await fetch('/api/group', {
@@ -96,6 +104,8 @@ export function GroupSettingsDialog({ currentGroupName, initialContactEmail = ""
       })
       if (!res.ok) throw new Error('更新失敗')
       alert('球團名稱更新成功')
+      setCommittedName(newName)
+      setActiveEdit(null)
       onUpdateSuccess(newName)
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : '更新失敗'
@@ -122,6 +132,8 @@ export function GroupSettingsDialog({ currentGroupName, initialContactEmail = ""
       })
       if (!res.ok) throw new Error('更新失敗')
       alert('聯絡信箱更新成功')
+      setCommittedEmail(contactEmail)
+      setActiveEdit(null)
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : '更新失敗'
       alert(message)
@@ -145,6 +157,7 @@ export function GroupSettingsDialog({ currentGroupName, initialContactEmail = ""
       if (!res.ok) throw new Error('更新失敗')
       alert('登入密碼更新成功')
       setNewLoginPassword("")
+      setActiveEdit(null)
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : '更新失敗'
       alert(message)
@@ -294,21 +307,47 @@ export function GroupSettingsDialog({ currentGroupName, initialContactEmail = ""
             <Label htmlFor="name" className="flex items-center gap-2 text-foreground font-bold">
               <Type className="w-4 h-4" /> 球團名稱
             </Label>
-            <div className="flex gap-2">
-              <Input
-                id="name"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                className="flex-1"
-              />
-              <Button 
-                onClick={handleUpdateGroupName} 
-                disabled={loading || isLoadingSettings || newName === currentGroupName}
-                size="sm"
-              >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "更新"}
-              </Button>
-            </div>
+            {activeEdit === 'name' ? (
+              <div className="flex gap-2">
+                <Input
+                  id="name"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  className="flex-1 h-9"
+                  autoFocus
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-9"
+                  onClick={() => { setNewName(committedName); setActiveEdit(null) }}
+                  disabled={loading}
+                >
+                  取消
+                </Button>
+                <Button
+                  onClick={handleUpdateGroupName}
+                  disabled={loading || !newName || newName === committedName}
+                  size="sm"
+                  className="h-9"
+                >
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "儲存"}
+                </Button>
+              </div>
+            ) : (
+              <div className="settings-card flex items-center justify-between gap-2 px-3 py-2 rounded-lg border">
+                <span className="text-sm text-foreground truncate">{committedName}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="settings-button shrink-0"
+                  onClick={() => setActiveEdit('name')}
+                  disabled={isLoadingSettings}
+                >
+                  編輯
+                </Button>
+              </div>
+            )}
           </div>
 
           <hr className="border-slate-100" />
@@ -318,25 +357,51 @@ export function GroupSettingsDialog({ currentGroupName, initialContactEmail = ""
             <Label htmlFor="login-pass" className="flex items-center gap-2 text-foreground font-bold">
               <KeyRound className="w-4 h-4" /> 變更共享密碼 (系統登入用)
             </Label>
-            <div className="flex gap-2">
-              <Input
-                id="login-pass"
-                type="password"
-                placeholder="輸入新密碼"
-                value={newLoginPassword}
-                onChange={(e) => setNewLoginPassword(e.target.value)}
-                className="flex-1"
-              />
-              <Button 
-                onClick={handleUpdateLoginPassword} 
-                disabled={loading || !newLoginPassword}
-                variant="secondary"
-                size="sm"
-              >
-                更新
-              </Button>
-            </div>
-            <p className="text-[10px] text-slate-400 dark:text-slate-500">更新後，所有共用此帳號的成員皆需使用新密碼登入。</p>
+            {activeEdit === 'password' ? (
+              <>
+                <div className="flex gap-2">
+                  <Input
+                    id="login-pass"
+                    type="password"
+                    placeholder="輸入新密碼（至少 6 字元）"
+                    value={newLoginPassword}
+                    onChange={(e) => setNewLoginPassword(e.target.value)}
+                    className="flex-1 h-9"
+                    autoFocus
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-9"
+                    onClick={() => { setNewLoginPassword(""); setActiveEdit(null) }}
+                    disabled={loading}
+                  >
+                    取消
+                  </Button>
+                  <Button
+                    onClick={handleUpdateLoginPassword}
+                    disabled={loading || !newLoginPassword}
+                    size="sm"
+                    className="h-9"
+                  >
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "儲存"}
+                  </Button>
+                </div>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500">更新後，所有共用此帳號的成員皆需使用新密碼登入。</p>
+              </>
+            ) : (
+              <div className="settings-card flex items-center justify-between gap-2 px-3 py-2 rounded-lg border">
+                <span className="text-sm text-muted-foreground">共用登入密碼 ••••••</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="settings-button shrink-0"
+                  onClick={() => setActiveEdit('password')}
+                >
+                  變更
+                </Button>
+              </div>
+            )}
           </div>
 
           <hr className="border-slate-100" />
@@ -346,27 +411,56 @@ export function GroupSettingsDialog({ currentGroupName, initialContactEmail = ""
             <Label htmlFor="contact-email" className="flex items-center gap-2 text-foreground font-bold">
               <Mail className="w-4 h-4" /> 聯絡信箱
             </Label>
-            <div className="flex gap-2">
-              <Input
-                id="contact-email"
-                type="email"
-                placeholder="例如：abc@example.com"
-                value={contactEmail}
-                onChange={(e) => setContactEmail(e.target.value)}
-                className="flex-1"
-              />
-              <Button 
-                onClick={handleUpdateContactEmail} 
-                disabled={loading || !contactEmail}
-                variant="secondary"
-                size="sm"
-              >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "更新"}
-              </Button>
-            </div>
-            <p className="text-[10px] text-amber-600 dark:text-amber-500">
-              📬 低庫存通知會寄到這個信箱。未填寫則不會收到補貨提醒，建議填寫真實可收信的信箱。
-            </p>
+            {activeEdit === 'email' ? (
+              <>
+                <div className="flex gap-2">
+                  <Input
+                    id="contact-email"
+                    type="email"
+                    placeholder="例如：abc@example.com"
+                    value={contactEmail}
+                    onChange={(e) => setContactEmail(e.target.value)}
+                    className="flex-1 h-9"
+                    autoFocus
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-9"
+                    onClick={() => { setContactEmail(committedEmail); setActiveEdit(null) }}
+                    disabled={loading}
+                  >
+                    取消
+                  </Button>
+                  <Button
+                    onClick={handleUpdateContactEmail}
+                    disabled={loading}
+                    size="sm"
+                    className="h-9"
+                  >
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "儲存"}
+                  </Button>
+                </div>
+                <p className="text-[10px] text-amber-600 dark:text-amber-500">
+                  📬 低庫存通知會寄到這個信箱。未填寫則不會收到補貨提醒，建議填寫真實可收信的信箱。
+                </p>
+              </>
+            ) : (
+              <div className="settings-card flex items-center justify-between gap-2 px-3 py-2 rounded-lg border">
+                <span className={cn("text-sm truncate", committedEmail ? "text-foreground" : "text-muted-foreground")}>
+                  {committedEmail || "尚未設定（不會收到低庫存通知）"}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="settings-button shrink-0"
+                  onClick={() => setActiveEdit('email')}
+                  disabled={isLoadingSettings}
+                >
+                  編輯
+                </Button>
+              </div>
+            )}
           </div>
 
           <hr className="border-slate-100" />
@@ -498,10 +592,11 @@ export function GroupSettingsDialog({ currentGroupName, initialContactEmail = ""
                     >
                       取消
                     </Button>
-                    <Button 
-                      onClick={handleVerifyCurrentPassword} 
+                    <Button
+                      onClick={handleVerifyCurrentPassword}
                       disabled={loading || !currentRestockPassword}
-                      className="flex-1 h-9 bg-slate-800"
+                      size="sm"
+                      className="flex-1 h-9"
                     >
                       {loading ? "驗證中..." : "下一步"}
                     </Button>
@@ -543,12 +638,13 @@ export function GroupSettingsDialog({ currentGroupName, initialContactEmail = ""
                     >
                       取消
                     </Button>
-                    <Button 
-                      onClick={() => handleUpdateRestockPassword(false)} 
+                    <Button
+                      onClick={() => handleUpdateRestockPassword(false)}
                       disabled={loading || !newRestockPassword}
-                      className="h-9 bg-emerald-600 hover:bg-emerald-700"
+                      size="sm"
+                      className="h-9"
                     >
-                      儲存設定
+                      {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "儲存設定"}
                     </Button>
                   </div>
                 </div>
