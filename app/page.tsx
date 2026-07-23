@@ -6,6 +6,7 @@ import { ClientWrapper } from "./client-wrapper"
 type GroupSummary = {
   id: string
   name: string
+  contact_email: string | null
 }
 
 async function getInventoryData() {
@@ -19,7 +20,7 @@ async function getInventoryData() {
   // 取得 profile + group（合併為一次查詢）
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('group_id, groups(id, name)')
+    .select('group_id, groups(id, name, contact_email)')
     .eq('id', userId)
     .single()
 
@@ -82,7 +83,7 @@ export default async function Home() {
           </div>
 
           {/* 右側：操作按鈕組 */}
-          <ClientWrapper variant="header" groupName={group?.name || ""} />
+          <ClientWrapper variant="header" groupName={group?.name || ""} contactEmail={group?.contact_email || ""} />
         </div>
       </header>
 

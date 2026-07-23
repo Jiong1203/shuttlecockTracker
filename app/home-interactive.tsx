@@ -54,7 +54,7 @@ interface HomeInteractiveProps {
   onInventoryManagerOpenChange?: (open: boolean) => void
 }
 
-export function HomeHeaderControls({ groupName }: { groupName: string }) {
+export function HomeHeaderControls({ groupName, contactEmail = "" }: { groupName: string; contactEmail?: string }) {
   const [group, setGroup] = useState<{ name: string } | null>(groupName ? { name: groupName } : null)
   const [loggingOut, setLoggingOut] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -103,6 +103,7 @@ export function HomeHeaderControls({ groupName }: { groupName: string }) {
         <Tooltip label="帳號設定">
           <GroupSettingsDialog
             currentGroupName={group?.name || ""}
+            initialContactEmail={contactEmail}
             onUpdateSuccess={(newName) => {
               if (newName) {
                 setGroup(prev => prev ? { ...prev, name: newName } : null)
@@ -182,6 +183,7 @@ export function HomeHeaderControls({ groupName }: { groupName: string }) {
         {/* 隱藏的 GroupSettingsDialog（受控模式，由下拉選單觸發） */}
         <GroupSettingsDialog
           currentGroupName={group?.name || ""}
+          initialContactEmail={contactEmail}
           open={settingsOpen}
           onOpenChange={setSettingsOpen}
           onUpdateSuccess={(newName) => {

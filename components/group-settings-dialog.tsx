@@ -21,12 +21,13 @@ const LINE_BASIC_ID = process.env.NEXT_PUBLIC_LINE_BASIC_ID || ""
 
 interface GroupSettingsDialogProps {
   currentGroupName: string
+  initialContactEmail?: string
   onUpdateSuccess: (newName?: string) => void
   open?: boolean
   onOpenChange?: (open: boolean) => void
 }
 
-export function GroupSettingsDialog({ currentGroupName, onUpdateSuccess, open: controlledOpen, onOpenChange }: GroupSettingsDialogProps) {
+export function GroupSettingsDialog({ currentGroupName, initialContactEmail = "", onUpdateSuccess, open: controlledOpen, onOpenChange }: GroupSettingsDialogProps) {
   const [internalOpen, setInternalOpen] = useState(false)
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen
   const setOpen = (value: boolean) => {
@@ -38,7 +39,7 @@ export function GroupSettingsDialog({ currentGroupName, onUpdateSuccess, open: c
   
   // States for form
   const [newName, setNewName] = useState(currentGroupName)
-  const [contactEmail, setContactEmail] = useState("")
+  const [contactEmail, setContactEmail] = useState(initialContactEmail)
   const [newLoginPassword, setNewLoginPassword] = useState("")
   const [currentRestockPassword, setCurrentRestockPassword] = useState("")
   const [newRestockPassword, setNewRestockPassword] = useState("")
@@ -55,9 +56,9 @@ export function GroupSettingsDialog({ currentGroupName, onUpdateSuccess, open: c
   useEffect(() => {
     if (open) {
       fetchSettings()
-      // 如果 props 已經更新了，就先用 props 的
+      // 如果 props 已經更新了，就先用 props 的（避免開窗時信箱欄空白閃爍，等 fetch 回來才補值）
       setNewName(currentGroupName)
-      setContactEmail("")
+      setContactEmail(initialContactEmail)
       setNewLoginPassword("")
       setCurrentRestockPassword("")
       setNewRestockPassword("")
@@ -66,7 +67,7 @@ export function GroupSettingsDialog({ currentGroupName, onUpdateSuccess, open: c
       setDeleteConfirmName("")
       setLineCode(null)
     }
-  }, [open, currentGroupName])
+  }, [open, currentGroupName, initialContactEmail])
 
   const fetchSettings = async () => {
     setIsLoadingSettings(true)

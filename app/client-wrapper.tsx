@@ -37,6 +37,7 @@ interface PickupRecord {
 interface ClientWrapperProps {
   variant: 'header' | 'content'
   groupName?: string
+  contactEmail?: string
   inventory?: InventorySummary[]
   records?: PickupRecord[]
   totalCurrentStock?: number
@@ -45,6 +46,7 @@ interface ClientWrapperProps {
 export function ClientWrapper({
   variant,
   groupName = "",
+  contactEmail = "",
   inventory = [],
   records = [],
   totalCurrentStock = 0
@@ -54,7 +56,7 @@ export function ClientWrapper({
   if (variant === 'header') {
     return (
       <Suspense fallback={<div className="w-32 h-10 bg-muted animate-pulse rounded-xl" />}>
-        <HomeHeaderControls groupName={groupName} />
+        <HomeHeaderControls groupName={groupName} contactEmail={contactEmail} />
       </Suspense>
     )
   }
