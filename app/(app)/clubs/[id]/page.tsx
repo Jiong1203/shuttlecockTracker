@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback, use } from "react"
-import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -13,7 +12,7 @@ import { EventDetailDialog } from "@/components/event-detail-dialog"
 import { computeEventStats, groupByMonth } from "@/lib/event-stats"
 import { EventTrendChart } from "@/components/event-trend-chart"
 import {
-  ChevronLeft, Plus, Loader2, Lock, CalendarDays,
+  Plus, Loader2, Lock, CalendarDays,
   BadgeCheck, Trash2, Sparkles, ClipboardList, ChevronDown, X, Wallet,
 } from "lucide-react"
 
@@ -438,11 +437,6 @@ function PinGate({ clubId, clubName, onVerified }: { clubId: string; clubName: s
               {loading && <Loader2 className="w-4 h-4 animate-spin" />}確認進入
             </Button>
           </div>
-          <div className="text-center">
-            <Link href="/clubs" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              ← 返回球隊清單
-            </Link>
-          </div>
         </div>
       </div>
     </div>
@@ -552,10 +546,6 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
       <header className="sticky top-0 z-10 bg-card border-b border-border/60 shadow-sm">
         <div className="max-w-5xl mx-auto px-4 md:px-8 h-14 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Link href="/clubs" className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm">
-              <ChevronLeft className="w-4 h-4" /> 球隊清單
-            </Link>
-            <span className="text-border">|</span>
             <div className="flex items-center gap-2 font-semibold">
               <ClipboardList className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               <span>🏸 {club?.name}</span>
