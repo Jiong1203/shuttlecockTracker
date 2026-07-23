@@ -9,7 +9,6 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog"
 import { ToastContainer, showToast } from "@/components/ui/toast"
-import { ThemeToggle } from "@/components/theme-toggle"
 import { EventDetailDialog } from "@/components/event-detail-dialog"
 import { computeEventStats, groupByMonth } from "@/lib/event-stats"
 import { EventTrendChart } from "@/components/event-trend-chart"
@@ -565,7 +564,6 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
               )}
             </div>
           </div>
-          <ThemeToggle />
         </div>
       </header>
 

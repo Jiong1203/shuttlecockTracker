@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,10 +9,9 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog"
 import { ToastContainer, showToast } from "@/components/ui/toast"
-import { ThemeToggle } from "@/components/theme-toggle"
 import {
-  ChevronLeft, Plus, Settings, Lock, Loader2, Users,
-  LogIn, ClipboardList, BadgeCheck,
+  Plus, Settings, Lock, Loader2, Users,
+  LogIn, BadgeCheck,
 } from "lucide-react"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -329,24 +327,7 @@ export default function ClubsPage() {
   const openSettings = (club: Club) => { setSettingsTarget(club); setSettingsOpen(true) }
 
   return (
-    <main className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-10 bg-card border-b border-border/60 shadow-sm">
-        <div className="max-w-5xl mx-auto px-4 md:px-8 h-14 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Link href="/" className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm">
-              <ChevronLeft className="w-4 h-4" /> 首頁
-            </Link>
-            <span className="text-border">|</span>
-            <div className="flex items-center gap-2 font-semibold">
-              <ClipboardList className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              開團紀錄
-            </div>
-          </div>
-          <ThemeToggle />
-        </div>
-      </header>
-
+    <div>
       {/* Content */}
       <div className="max-w-5xl mx-auto px-4 md:px-8 py-8 space-y-6">
         {/* Title row */}
@@ -447,6 +428,6 @@ export default function ClubsPage() {
       )}
 
       <ToastContainer />
-    </main>
+    </div>
   )
 }

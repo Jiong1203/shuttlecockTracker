@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { InventoryDisplay } from "@/components/inventory-display"
+import { InventoryStats } from "@/components/inventory-stats"
 import { ClientWrapper } from "./client-wrapper"
 
 type GroupSummary = {
@@ -28,8 +29,15 @@ async function getInventoryData() {
 
   const groupId = profile.group_id
 
-  // 並行獲取庫存與領取紀錄
-  const [inventoryResult, pickupResult] = await Promise.all([
+  // 本月起始（以台北時區 UTC+8 計算），供「本月取用」統計使用
+  const now = new Date()
+  const taipei = new Date(now.getTime() + 8 * 60 * 60 * 1000)
+  const monthStartISO = new Date(
+    Date.UTC(taipei.getUTCFullYear(), taipei.getUTCMonth(), 1) - 8 * 60 * 60 * 1000
+  ).toISOString()
+
+  // 並行獲取庫存、領取紀錄、本月取用彙總
+  const [inventoryResult, pickupResult, monthlyPickupResult] = await Promise.all([
     supabase
       .from('inventory_summary')
       .select('*')
@@ -40,56 +48,63 @@ async function getInventoryData() {
       .eq('group_id', groupId)
       .order('created_at', { ascending: false })
       .limit(100),
+    supabase
+      .from('pickup_records')
+      .select('quantity')
+      .eq('group_id', groupId)
+      .gte('created_at', monthStartISO),
   ])
 
   const inventory = inventoryResult.data || []
   const records = pickupResult.data || []
+  const monthlyRows = (monthlyPickupResult.data || []) as { quantity: number | null }[]
   const groups = profile.groups as GroupSummary | GroupSummary[] | null
   const group = Array.isArray(groups) ? groups[0] : groups
+
+  const monthlyPickupQty = monthlyRows.reduce((acc, r) => acc + (r.quantity || 0), 0)
+  const monthlyPickupCount = monthlyRows.length
 
   return {
     inventory: Array.isArray(inventory) ? inventory : [inventory],
     records,
     group,
+    monthlyPickupQty,
+    monthlyPickupCount,
   }
 }
 
+type InventoryStatRow = {
+  is_active?: boolean
+  total_restocked?: number | null
+  current_stock?: number | null
+  low_stock_threshold?: number | null
+}
+
 export default async function Home() {
-  const { inventory, records, group } = await getInventoryData()
-  
+  const { inventory, records, group, monthlyPickupQty, monthlyPickupCount } = await getInventoryData()
+
   const totalCurrentStock = inventory.reduce((acc, item) => acc + (item.current_stock || 0), 0)
 
+  // KPI 統計（低庫存準則與低庫存通知一致：啟用 + 曾進貨 + 低於門檻）
+  const invRows = inventory as InventoryStatRow[]
+  const activeRows = invRows.filter((i) => i.is_active)
+  const totalActiveStock = activeRows.reduce((acc, i) => acc + (i.current_stock || 0), 0)
+  const lowStockCount = invRows.filter(
+    (i) => i.is_active && (i.total_restocked || 0) > 0 && (i.current_stock || 0) < (i.low_stock_threshold ?? 5)
+  ).length
+
   return (
-    <div className="min-h-screen bg-background">
-      {/* ── Toolbar ── */}
-      <header className="sticky top-0 z-20 bg-card/95 backdrop-blur-sm border-b border-border">
-        <div className="max-w-4xl mx-auto px-4 md:px-8 h-14 flex items-center gap-3">
-          {/* 左側：品牌 + 球團名稱 */}
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <div className="flex items-center gap-2 shrink-0">
-              <h1 className="text-sm font-black tracking-tight text-foreground whitespace-nowrap">羽球庫存共享小幫手</h1>
-              <span className="bg-blue-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full tracking-wider uppercase">Beta</span>
-            </div>
+    <div className="p-4 md:p-8">
+      <div className="max-w-4xl mx-auto space-y-8">
+          <InventoryStats
+            totalStock={totalActiveStock}
+            activeTypeCount={activeRows.length}
+            totalTypeCount={invRows.length}
+            lowStockCount={lowStockCount}
+            monthlyPickupQty={monthlyPickupQty}
+            monthlyPickupCount={monthlyPickupCount}
+          />
 
-            {group && (
-              <>
-                <div className="hidden sm:block w-px h-4 bg-border shrink-0" />
-                <span className="hidden sm:flex items-center gap-1.5 min-w-0">
-                  <span className="bg-blue-600 dark:bg-blue-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md tracking-widest uppercase shrink-0">球團</span>
-                  <span className="text-sm font-semibold text-blue-600 dark:text-blue-300 truncate">{group.name}</span>
-                </span>
-              </>
-            )}
-          </div>
-
-          {/* 右側：操作按鈕組 */}
-          <ClientWrapper variant="header" groupName={group?.name || ""} contactEmail={group?.contact_email || ""} />
-        </div>
-      </header>
-
-      {/* ── 內容區 ── */}
-      <main className="p-4 md:p-8">
-        <div className="max-w-4xl mx-auto space-y-8">
           {inventory && (
             <InventoryDisplay stocks={inventory.filter(i => i.is_active)} />
           )}
@@ -105,8 +120,7 @@ export default async function Home() {
           <footer className="py-12 text-center text-slate-300 text-sm">
             &copy; 2026 動資訊有限公司 MovIT. All rights reserved.
           </footer>
-        </div>
-      </main>
+      </div>
     </div>
   )
 }
