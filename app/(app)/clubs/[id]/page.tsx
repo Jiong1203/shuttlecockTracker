@@ -13,7 +13,7 @@ import { computeEventStats, groupByMonth } from "@/lib/event-stats"
 import { EventTrendChart } from "@/components/event-trend-chart"
 import {
   Plus, Loader2, Lock, CalendarDays,
-  BadgeCheck, Trash2, Sparkles, ClipboardList, ChevronDown, X, Wallet,
+  BadgeCheck, Trash2, Sparkles, ClipboardList, ChevronDown, X, Wallet, Info,
 } from "lucide-react"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -456,6 +456,7 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
   const [detailEventId, setDetailEventId] = useState<string | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [settlingId, setSettlingId] = useState<string | null>(null)
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [expandedMetric, setExpandedMetric] = useState<string | null>(null)
@@ -495,6 +496,22 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
       showToast('活動已刪除', 'success')
       fetchEvents()
     } finally { setDeletingId(null) }
+  }
+
+  const handleSettle = async (ev: BadmintonEvent) => {
+    if (!confirm(`確定將 ${ev.event_date} 的活動標記為已結算？\n結算後將無法修改出席名單、球費，也無法刪除此活動。`)) return
+    setSettlingId(ev.id)
+    try {
+      const res = await fetch(`/api/events/${ev.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isSettled: true }),
+      })
+      const data = await res.json()
+      if (!res.ok) { showToast(data.error, 'error'); return }
+      showToast('活動已標記為結算', 'success')
+      fetchEvents()
+    } finally { setSettlingId(null) }
   }
 
   // Loading state
@@ -570,6 +587,21 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
             <Plus className="w-4 h-4" /> 新增活動
           </Button>
         </div>
+
+        {/* 結算規則說明 — 可折疊，避免佔用版面 */}
+        <details className="group/rules rounded-xl border border-blue-400/40 dark:border-blue-500/30 bg-blue-50/50 dark:bg-blue-950/20 overflow-hidden">
+          <summary className="flex items-center gap-2 px-4 py-2.5 cursor-pointer select-none text-sm font-semibold text-blue-700 dark:text-blue-300 list-none hover:bg-blue-100/40 dark:hover:bg-blue-900/20 transition-colors">
+            <Info className="w-4 h-4 shrink-0" />
+            結算規則說明
+            <ChevronDown className="w-4 h-4 ml-auto transition-transform group-open/rules:rotate-180" />
+          </summary>
+          <ul className="px-4 pb-3.5 pt-0.5 space-y-1.5 text-xs text-muted-foreground leading-relaxed border-t border-blue-400/20 dark:border-blue-500/20 pt-3">
+            <li className="flex gap-2"><BadgeCheck className="w-3.5 h-3.5 mt-0.5 shrink-0 text-green-500" /><span>結算代表本場帳目已確認完成，狀態欄會顯示綠色 ✓ 已結算標記。</span></li>
+            <li className="flex gap-2"><span className="shrink-0 text-blue-500">•</span><span>結算前請先確認<span className="font-medium text-foreground">場租、用球數、球費、出席名單與收費</span>皆填寫正確。</span></li>
+            <li className="flex gap-2"><span className="shrink-0 text-blue-500">•</span><span>結算後此活動將<span className="font-medium text-foreground">鎖定</span>：無法再新增／修改出席名單與球費，也<span className="font-medium text-foreground">無法刪除</span>。</span></li>
+            <li className="flex gap-2"><span className="shrink-0 text-blue-500">•</span><span>結算為不可逆操作，請於各欄位確認無誤後，再按下該列的「結算」按鈕。</span></li>
+          </ul>
+        </details>
 
         {/* Date filter — 篩選後彙總、合計與趨勢圖皆自動跟隨 */}
         <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -659,7 +691,7 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
         {/* Events Table */}
         <div className="rounded-xl border bg-card overflow-hidden shadow-sm">
           {/* Table Header — desktop only */}
-          <div className="hidden md:grid grid-cols-[120px_1fr_90px_72px_90px_90px_100px_80px_50px] gap-3 px-5 py-3 bg-muted/40 border-b text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+          <div className="hidden md:grid grid-cols-[120px_1fr_90px_72px_90px_90px_100px_80px_120px] gap-3 px-5 py-3 bg-muted/40 border-b text-xs font-semibold text-muted-foreground uppercase tracking-wide">
             <span>日期</span>
             <span>場地</span>
             <span className="text-right">場租</span>
@@ -668,7 +700,7 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
             <span className="text-right">收費</span>
             <span className="text-right">利潤</span>
             <span className="text-center">狀態</span>
-            <span></span>
+            <span className="text-center">操作</span>
           </div>
 
           {loadingEvents ? (
@@ -703,21 +735,31 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className={`text-sm font-bold ${profitClass(ev.profit)}`}>{profitLabel(ev.profit)}</span>
-                    <div onClick={e => e.stopPropagation()}>
+                    <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
                       {!ev.is_settled && (
-                        <button
-                          onClick={() => handleDelete(ev)}
-                          disabled={deletingId === ev.id}
-                          className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
-                        >
-                          {deletingId === ev.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                        </button>
+                        <>
+                          <button
+                            onClick={() => handleSettle(ev)}
+                            disabled={settlingId === ev.id}
+                            className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-green-600 dark:text-green-400 border border-green-500/40 hover:bg-green-50 dark:hover:bg-green-950/20 transition-colors disabled:opacity-50"
+                          >
+                            {settlingId === ev.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <BadgeCheck className="w-3 h-3" />}
+                            結算
+                          </button>
+                          <button
+                            onClick={() => handleDelete(ev)}
+                            disabled={deletingId === ev.id}
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
+                          >
+                            {deletingId === ev.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                          </button>
+                        </>
                       )}
                     </div>
                   </div>
                 </div>
                 {/* Desktop layout */}
-                <div className="hidden md:grid grid-cols-[120px_1fr_90px_72px_90px_90px_100px_80px_50px] gap-3 py-4 items-center">
+                <div className="hidden md:grid grid-cols-[120px_1fr_90px_72px_90px_90px_100px_80px_120px] gap-3 py-4 items-center">
                   <div className="font-semibold text-sm">{ev.event_date}</div>
                   <div className="text-sm text-muted-foreground truncate">{ev.venue_name || '—'}</div>
                   <div className="text-sm text-right">{fmtMoney(ev.venue_cost)}</div>
@@ -732,15 +774,27 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
                       <span className="w-2 h-2 rounded-full bg-muted-foreground/30 inline-block" />
                     )}
                   </div>
-                  <div className="flex justify-end" onClick={e => e.stopPropagation()}>
-                    {!ev.is_settled && (
-                      <button
-                        onClick={() => handleDelete(ev)}
-                        disabled={deletingId === ev.id}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors opacity-0 group-hover:opacity-100"
-                      >
-                        {deletingId === ev.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                      </button>
+                  <div className="flex justify-center items-center gap-1" onClick={e => e.stopPropagation()}>
+                    {ev.is_settled ? (
+                      <span className="text-xs text-muted-foreground">已結算</span>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => handleSettle(ev)}
+                          disabled={settlingId === ev.id}
+                          className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-green-600 dark:text-green-400 border border-green-500/40 hover:bg-green-50 dark:hover:bg-green-950/20 transition-colors disabled:opacity-50"
+                        >
+                          {settlingId === ev.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <BadgeCheck className="w-3 h-3" />}
+                          結算
+                        </button>
+                        <button
+                          onClick={() => handleDelete(ev)}
+                          disabled={deletingId === ev.id}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors opacity-0 group-hover:opacity-100"
+                        >
+                          {deletingId === ev.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -750,7 +804,7 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
 
           {/* 合計列 — desktop only，對齊表頭欄位 */}
           {events.length > 0 && (
-            <div className="hidden md:grid grid-cols-[120px_1fr_90px_72px_90px_90px_100px_80px_50px] gap-3 px-5 py-3.5 border-t-2 border-border bg-muted/40 items-center text-sm font-bold">
+            <div className="hidden md:grid grid-cols-[120px_1fr_90px_72px_90px_90px_100px_80px_120px] gap-3 px-5 py-3.5 border-t-2 border-border bg-muted/40 items-center text-sm font-bold">
               <div>合計</div>
               <div></div>
               <div className="text-right">{fmtMoney(stats.totalVenueCost)}</div>
