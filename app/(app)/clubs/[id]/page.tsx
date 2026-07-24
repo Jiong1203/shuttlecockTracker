@@ -589,17 +589,17 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
         </div>
 
         {/* 結算規則說明 — 可折疊，避免佔用版面 */}
-        <details className="group/rules rounded-xl border border-blue-400/40 dark:border-blue-500/30 bg-blue-50/50 dark:bg-blue-950/20 overflow-hidden">
-          <summary className="flex items-center gap-2 px-4 py-2.5 cursor-pointer select-none text-sm font-semibold text-blue-700 dark:text-blue-300 list-none hover:bg-blue-100/40 dark:hover:bg-blue-900/20 transition-colors">
+        <details open className="group/rules rounded-xl border border-blue-400/50 dark:border-blue-400/30 bg-blue-50/60 dark:bg-blue-950/40 overflow-hidden">
+          <summary className="flex items-center gap-2 px-4 py-2.5 cursor-pointer select-none text-sm font-semibold text-blue-700 dark:text-blue-200 list-none hover:bg-blue-100/50 dark:hover:bg-blue-900/30 transition-colors">
             <Info className="w-4 h-4 shrink-0" />
             結算規則說明
             <ChevronDown className="w-4 h-4 ml-auto transition-transform group-open/rules:rotate-180" />
           </summary>
-          <ul className="px-4 pb-3.5 pt-0.5 space-y-1.5 text-xs text-muted-foreground leading-relaxed border-t border-blue-400/20 dark:border-blue-500/20 pt-3">
-            <li className="flex gap-2"><BadgeCheck className="w-3.5 h-3.5 mt-0.5 shrink-0 text-green-500" /><span>結算代表本場帳目已確認完成，狀態欄會顯示綠色 ✓ 已結算標記。</span></li>
-            <li className="flex gap-2"><span className="shrink-0 text-blue-500">•</span><span>結算前請先確認<span className="font-medium text-foreground">場租、用球數、球費、出席名單與收費</span>皆填寫正確。</span></li>
-            <li className="flex gap-2"><span className="shrink-0 text-blue-500">•</span><span>結算後此活動將<span className="font-medium text-foreground">鎖定</span>：無法再新增／修改出席名單與球費，也<span className="font-medium text-foreground">無法刪除</span>。</span></li>
-            <li className="flex gap-2"><span className="shrink-0 text-blue-500">•</span><span>結算為不可逆操作，請於各欄位確認無誤後，再按下該列的「結算」按鈕。</span></li>
+          <ul className="px-4 pb-3.5 pt-3 space-y-1.5 text-xs text-slate-600 dark:text-slate-300 leading-relaxed border-t border-blue-400/25 dark:border-blue-400/20">
+            <li className="flex gap-2"><BadgeCheck className="w-3.5 h-3.5 mt-0.5 shrink-0 text-green-600 dark:text-green-400" /><span>結算代表本場帳目已確認完成，狀態欄會顯示綠色 ✓ 已結算標記。</span></li>
+            <li className="flex gap-2"><span className="shrink-0 text-blue-600 dark:text-blue-400">•</span><span>結算前請先確認<span className="font-semibold text-slate-800 dark:text-slate-100">場租、用球數、球費、出席名單與收費</span>皆填寫正確。</span></li>
+            <li className="flex gap-2"><span className="shrink-0 text-blue-600 dark:text-blue-400">•</span><span>結算後此活動將<span className="font-semibold text-slate-800 dark:text-slate-100">鎖定</span>：無法再新增／修改出席名單與球費，也<span className="font-semibold text-slate-800 dark:text-slate-100">無法刪除</span>。</span></li>
+            <li className="flex gap-2"><span className="shrink-0 text-blue-600 dark:text-blue-400">•</span><span>結算為不可逆操作，請於各欄位確認無誤後，再按下該列的「結算」按鈕。</span></li>
           </ul>
         </details>
 
@@ -790,7 +790,7 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
                         <button
                           onClick={() => handleDelete(ev)}
                           disabled={deletingId === ev.id}
-                          className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors opacity-0 group-hover:opacity-100"
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
                         >
                           {deletingId === ev.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                         </button>
