@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getGroupId } from '@/lib/supabase/helpers'
+import { calcEventFinance } from '@/lib/event-finance'
 
 export const dynamic = 'force-dynamic'
 
@@ -44,14 +45,12 @@ export async function GET(request: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   const events = data.map(e => {
-    const venueCost = e.court_count * e.hours * e.hourly_rate
-    const totalRevenue = e.event_attendees
-      .filter((a: { paid: boolean; is_free: boolean }) => a.paid && !a.is_free)
-      .reduce((sum: number, a: { fee: number }) => sum + Number(a.fee), 0)
-    const profit = totalRevenue - Number(e.shuttle_cost) - venueCost
-
     const { event_attendees, ...rest } = e
-    return { ...rest, attendee_count: event_attendees.length, venue_cost: venueCost, total_revenue: totalRevenue, profit }
+    return {
+      ...rest,
+      attendee_count: event_attendees.length,
+      ...calcEventFinance(event_attendees, e),
+    }
   })
 
   return NextResponse.json(events)

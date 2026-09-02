@@ -27,8 +27,13 @@ interface FullEvent {
   is_settled: boolean
   notes: string | null
   venue_cost: number
-  total_revenue: number
+  total_due: number
+  total_paid: number
+  total_unpaid: number
+  unpaid_count: number
+  payer_count: number
   profit: number
+  profit_paid: number
   event_attendees: Attendee[]
 }
 
@@ -62,17 +67,36 @@ function ProfitCard({ event }: { event: FullEvent }) {
   const items = [
     { label: '場租費用', value: fmtMoney(event.venue_cost), className: 'text-foreground' },
     { label: '用球成本', value: fmtMoney(event.shuttle_cost), className: 'text-foreground' },
-    { label: '總收費', value: fmtMoney(event.total_revenue), className: 'text-foreground' },
+    { label: '應收', value: fmtMoney(event.total_due), className: 'text-foreground' },
     { label: '利潤', value: profitLabel(event.profit), className: `text-lg ${profitClass(event.profit)} font-black` },
   ]
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 rounded-xl border p-3 bg-muted/30">
-      {items.map(it => (
-        <div key={it.label} className="text-center space-y-0.5">
-          <div className="text-[10px] text-muted-foreground">{it.label}</div>
-          <div className={`text-sm font-semibold ${it.className}`}>{it.value}</div>
-        </div>
-      ))}
+    <div className="rounded-xl border bg-muted/30 overflow-hidden">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3">
+        {items.map(it => (
+          <div key={it.label} className="text-center space-y-0.5">
+            <div className="text-[10px] text-muted-foreground">{it.label}</div>
+            <div className={`text-sm font-semibold ${it.className}`}>{it.value}</div>
+          </div>
+        ))}
+      </div>
+      {/* 利潤以應收為基準，收款進度另外揭露，避免把「還沒收到錢」誤讀成「虧損」 */}
+      <div className="border-t px-3 py-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px]">
+        {event.unpaid_count > 0 ? (
+          <>
+            <span className="text-amber-600 dark:text-amber-500 font-semibold">
+              尚有 {event.unpaid_count} 人未繳，共 {fmtMoney(event.total_unpaid)}
+            </span>
+            <span className="text-muted-foreground">
+              實收 {fmtMoney(event.total_paid)} · 實收利潤 {profitLabel(event.profit_paid)}
+            </span>
+          </>
+        ) : (
+          <span className="text-muted-foreground">
+            {event.payer_count > 0 ? `${event.payer_count} 人已全數繳清` : '本場無應收費用'}
+          </span>
+        )}
+      </div>
     </div>
   )
 }

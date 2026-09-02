@@ -1,0 +1,924 @@
+<title>羽球系統技術稽核</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --ground:      #F7F6F2;
+    --surface:     #FFFFFF;
+    --surface-alt: #EFEEE8;
+    --ink:         #12211B;
+    --ink-soft:    #4A5B53;
+    --ink-faint:   #7C8A83;
+    --line:        #D8DCD5;
+    --line-strong: #B9C2BB;
+    --court:       #1F4D3D;
+    --court-soft:  #E4EDE7;
+    --sev-high:    #A33A2E;
+    --sev-high-bg: #F6E5E2;
+    --sev-mid:     #B8802C;
+    --sev-mid-bg:  #F7EDDC;
+    --sev-low:     #3E7A5E;
+    --sev-low-bg:  #E3EFE8;
+
+    --font-display: "Noto Serif TC", "Songti TC", serif;
+    --font-body:    "Noto Sans TC", -apple-system, "Segoe UI", sans-serif;
+    --font-mono:    "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+
+    color-scheme: light;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #0E1613;
+      --surface:     #16211C;
+      --surface-alt: #1D2A24;
+      --ink:         #E8EDE9;
+      --ink-soft:    #A8B6AE;
+      --ink-faint:   #7A8981;
+      --line:        #27342D;
+      --line-strong: #3A4A41;
+      --court:       #6FBF9B;
+      --court-soft:  #1B2E26;
+      --sev-high:    #E28579;
+      --sev-high-bg: #33201D;
+      --sev-mid:     #DDAE63;
+      --sev-mid-bg:  #302719;
+      --sev-low:     #74B694;
+      --sev-low-bg:  #1A2A22;
+      color-scheme: dark;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:      #0E1613;
+    --surface:     #16211C;
+    --surface-alt: #1D2A24;
+    --ink:         #E8EDE9;
+    --ink-soft:    #A8B6AE;
+    --ink-faint:   #7A8981;
+    --line:        #27342D;
+    --line-strong: #3A4A41;
+    --court:       #6FBF9B;
+    --court-soft:  #1B2E26;
+    --sev-high:    #E28579;
+    --sev-high-bg: #33201D;
+    --sev-mid:     #DDAE63;
+    --sev-mid-bg:  #302719;
+    --sev-low:     #74B694;
+    --sev-low-bg:  #1A2A22;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.75;
+    margin: 0;
+    padding: 0 20px 96px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 820px; margin: 0 auto; }
+
+  /* ── 報頭 ───────────────────────────────── */
+  .masthead {
+    padding: 56px 0 28px;
+    border-bottom: 2px solid var(--ink);
+  }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--court);
+    margin: 0 0 14px;
+  }
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: clamp(30px, 5.5vw, 44px);
+    line-height: 1.18;
+    letter-spacing: -0.01em;
+    margin: 0 0 14px;
+    text-wrap: balance;
+  }
+  .standfirst {
+    font-size: 16px;
+    color: var(--ink-soft);
+    margin: 0;
+    max-width: 60ch;
+  }
+
+  /* ── 掃描範圍計數列 ─────────────────────── */
+  .scope {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    margin: 0 0 44px;
+  }
+  .scope div {
+    background: var(--surface);
+    padding: 14px 16px;
+  }
+  .scope dt {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 4px;
+  }
+  .scope dd {
+    font-family: var(--font-mono);
+    font-size: 21px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+    margin: 0;
+  }
+  @media (max-width: 620px) {
+    .scope { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* ── 章節 ───────────────────────────────── */
+  section { margin: 0 0 52px; }
+
+  .sec-head {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    border-bottom: 1px solid var(--line-strong);
+    padding-bottom: 8px;
+    margin-bottom: 24px;
+  }
+  .sec-key {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--court);
+  }
+  h2 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 21px;
+    margin: 0;
+    flex: 1;
+  }
+  .sec-count {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-faint);
+  }
+
+  /* ── 發現項目 ───────────────────────────── */
+  .find {
+    display: grid;
+    grid-template-columns: 4px 1fr;
+    gap: 0 18px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 0;
+    margin-bottom: 14px;
+  }
+  .stripe { background: var(--line-strong); }
+  .find.high  .stripe { background: var(--sev-high); }
+  .find.mid   .stripe { background: var(--sev-mid); }
+  .find.low   .stripe { background: var(--sev-low); }
+
+  .find-body { padding: 16px 20px 18px 2px; min-width: 0; }
+
+  .find-top {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 8px 10px;
+    margin-bottom: 8px;
+  }
+  .id {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-faint);
+  }
+  h3 {
+    font-family: var(--font-body);
+    font-weight: 700;
+    font-size: 16px;
+    margin: 0;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .sev {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    padding: 2px 7px;
+    white-space: nowrap;
+  }
+  .high .sev { background: var(--sev-high-bg); color: var(--sev-high); }
+  .mid  .sev { background: var(--sev-mid-bg);  color: var(--sev-mid); }
+  .low  .sev { background: var(--sev-low-bg);  color: var(--sev-low); }
+
+  .find p { margin: 0 0 8px; color: var(--ink-soft); }
+  .find p:last-child { margin-bottom: 0; }
+  .find strong { color: var(--ink); font-weight: 700; }
+
+  .loc {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--court);
+    background: var(--court-soft);
+    padding: 1px 5px;
+    word-break: break-all;
+  }
+
+  .fix {
+    border-top: 1px dashed var(--line-strong);
+    margin-top: 12px;
+    padding-top: 10px;
+    font-size: 14px;
+  }
+  .fix b {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    display: block;
+    margin-bottom: 3px;
+    font-weight: 500;
+  }
+
+  pre {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    line-height: 1.6;
+    background: var(--surface-alt);
+    border-left: 2px solid var(--line-strong);
+    padding: 10px 14px;
+    margin: 10px 0;
+    overflow-x: auto;
+    color: var(--ink);
+  }
+
+  /* ── 執行順序 ───────────────────────────── */
+  .plan { border: 1px solid var(--line-strong); background: var(--surface); }
+  .wave {
+    display: grid;
+    grid-template-columns: 88px 1fr;
+    border-bottom: 1px solid var(--line);
+  }
+  .wave:last-child { border-bottom: 0; }
+  .wave-n {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--ink-faint);
+    padding: 16px 0 16px 18px;
+    border-right: 1px solid var(--line);
+  }
+  .wave-b { padding: 16px 18px; min-width: 0; }
+  .wave-b h4 {
+    font-family: var(--font-body);
+    font-size: 15px;
+    font-weight: 700;
+    margin: 0 0 4px;
+  }
+  .wave-b p { margin: 0; font-size: 14px; color: var(--ink-soft); }
+  .refs {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--court);
+    margin-top: 6px;
+  }
+  @media (max-width: 620px) {
+    .wave { grid-template-columns: 1fr; }
+    .wave-n { border-right: 0; border-bottom: 1px solid var(--line); padding: 12px 18px 0; }
+  }
+
+  /* ── 註記 ───────────────────────────────── */
+  .note {
+    background: var(--surface-alt);
+    border: 1px solid var(--line);
+    padding: 16px 20px;
+    font-size: 14px;
+    color: var(--ink-soft);
+    margin-top: 44px;
+  }
+  .note h4 {
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--ink);
+    margin: 0 0 6px;
+  }
+  .note p { margin: 0 0 8px; }
+  .note p:last-child { margin-bottom: 0; }
+
+  .verified {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    color: var(--ink-faint);
+    border: 1px solid var(--line-strong);
+    padding: 1px 6px;
+    white-space: nowrap;
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">Shuttlecock Tracker · 全專案掃描</p>
+    <h1>羽球系統技術稽核</h1>
+    <p class="standfirst">
+      掃過全部原始碼、資料庫 schema 與 API 路由後的 18 項發現，
+      依「先修會出錯的，再修會變慢的，最後補想要的」排序。
+    </p>
+  </header>
+
+  <dl class="scope">
+    <div><dt>原始碼檔案</dt><dd>62</dd></div>
+    <div><dt>程式碼行數</dt><dd>8,996</dd></div>
+    <div><dt>API 路由</dt><dd>18</dd></div>
+    <div><dt>資料表</dt><dd>7</dd></div>
+  </dl>
+
+  <!-- ── A 正確性 ── -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-key">A</span>
+      <h2>邏輯與正確性</h2>
+      <span class="sec-count">3 項</span>
+    </div>
+
+    <article class="find high">
+      <div class="stripe"></div>
+      <div class="find-body">
+        <div class="find-top">
+          <span class="id">A1</span>
+          <h3>利潤只算「已繳」，新活動一開始就顯示大額虧損</h3>
+          <span class="sev">高</span>
+        </div>
+        <p>
+          <span class="loc">app/api/events/route.ts:48</span>
+          的總收入是 <code>filter(a =&gt; a.paid &amp;&amp; !a.is_free)</code> —— 只有<strong>已經收到的錢</strong>才計入。
+          但場租在活動建立當下就全額計入成本。
+        </p>
+        <p>
+          結果是：一場 20 人、場租 2,000 的活動剛建立時，利潤顯示 <strong>−2,000</strong>，而且是紅字警示的視覺。
+          等收完錢才會翻正。這個數字在收款完成前一直是錯的，而收款期正是負責人最常看這頁的時候。
+        </p>
+        <div class="fix">
+          <b>建議</b>
+          拆成三個數字：<strong>應收</strong>（Σ 非免費者應繳）、<strong>實收</strong>（Σ 已繳）、<strong>未收</strong>（差額）。
+          利潤主數字用「應收」算，旁邊標註「尚有 N 人未繳，共 $X」。實收版本作為次要資訊。
+          這也讓催繳有了依據 —— 接上 E4 就是完整的一條線。
+        </div>
+      </div>
+    </article>
+
+    <article class="find mid">
+      <div class="stripe"></div>
+      <div class="find-body">
+        <div class="find-top">
+          <span class="id">A2</span>
+          <h3>庫存彙總 view 跨租戶全表計算</h3>
+          <span class="sev">中</span>
+        </div>
+        <p>
+          <span class="loc">migrations/20260401070700_remote_schema.sql:180</span>
+          的 <code>inventory_summary</code> 兩個 CTE 都沒有 <code>group_id</code> 條件：
+          先把<strong>所有球團</strong>的入庫與領取全表 <code>SUM</code> 完，才 join 回來過濾。
+        </p>
+        <pre>restock_stats AS (
+  SELECT shuttlecock_type_id, sum(quantity)
+  FROM restock_records          -- ← 無 WHERE，全表
+  GROUP BY shuttlecock_type_id
+)</pre>
+        <p>
+          每個使用者開首頁，都在替全站所有球團算一次總和。目前資料量小感覺不到，
+          但成本隨<strong>全站</strong>資料成長，不是隨你自己的資料成長 —— 這是多租戶系統最典型的那種會突然痛的設計。
+        </p>
+        <div class="fix">
+          <b>建議</b>
+          改成 function 形式接 <code>group_id</code> 參數，或在 CTE 內加上 <code>WHERE group_id = ...</code>。
+          注意 view 目前是 <code>security_invoker</code>，RLS 會過濾<em>結果</em>但不會下推到 CTE 裡 —— 這正是問題所在。
+        </div>
+      </div>
+    </article>
+
+    <article class="find low">
+      <div class="stripe"></div>
+      <div class="find-body">
+        <div class="find-top">
+          <span class="id">A3</span>
+          <h3>結算 FIFO 全歷史重放，成本隨紀錄數線性增長</h3>
+          <span class="sev">低</span>
+        </div>
+        <p>
+          <span class="loc">app/api/settlement/calculate/route.ts</span>
+          每次結算都從<strong>第一筆領取</strong>開始重放，才能知道每筆消耗的是哪個批次。
+          這是正確的設計（CLAUDE.md 已註明不可「優化」成先過濾），但代價是每次結算都要拉全部歷史。
+        </p>
+        <div class="fix">
+          <b>建議</b>
+          現在不用動。等領取紀錄破千筆再考慮「批次快照」：定期把某時間點的批次剩餘量存成一列，
+          之後只從快照往後重放。先加個耗時 log 觀察，不要提前優化。
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <!-- ── B 安全 ── -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-key">B</span>
+      <h2>安全</h2>
+      <span class="sec-count">3 項</span>
+    </div>
+
+    <article class="find high">
+      <div class="stripe"></div>
+      <div class="find-body">
+        <div class="find-top">
+          <span class="id">B1</span>
+          <h3>球隊 PIN 只是畫面上的門，API 完全不檢查</h3>
+          <span class="sev">高</span>
+        </div>
+        <p>
+          PIN 驗證通過後寫入 <code>sessionStorage</code>，之後所有
+          <span class="loc">/api/events/*</span> 只驗證 group 層級的登入身分，<strong>不再檢查 PIN</strong>。
+        </p>
+        <p>
+          實際後果：同一個球團帳號登入後，任何人在瀏覽器 console 直接
+          <code>fetch('/api/events?club_id=其他球隊ID')</code> 就能讀到別隊的活動、名單與收費明細，
+          完全繞過 PIN。PRD 把這記為「PIN 是 UI gate」的刻意取捨，但值得重新評估：
+          <strong>各隊的收費資料其實沒有互相隔離</strong>。
+        </p>
+        <div class="fix">
+          <b>建議</b>
+          兩條路。輕的：驗證成功後發一個短效簽章 token（HttpOnly cookie 或回傳的 JWT），
+          <code>/api/events/*</code> 檢查它涵蓋的 <code>club_id</code>。重的：走 PRD 提到的 Phase 2，
+          每隊獨立帳號 + RLS 真隔離。若各隊之間本來就互相信任，那就明確寫進說明，別讓 PIN 給人錯誤的安全感。
+        </div>
+      </div>
+    </article>
+
+    <article class="find mid">
+      <div class="stripe"></div>
+      <div class="find-body">
+        <div class="find-top">
+          <span class="id">B2</span>
+          <h3>PIN 與入庫密碼可無限次嘗試</h3>
+          <span class="sev">中</span>
+        </div>
+        <p>
+          全專案<strong>沒有任何速率限制</strong>。
+          <span class="loc">/api/clubs/[id]/verify-pin</span> 與入庫密碼驗證都可以無限次打。
+          4 位數 PIN 只有 10,000 種組合，腳本幾秒就跑完。
+        </p>
+        <p>
+          攻擊面確實限縮在「已登入該球團帳號的人」，所以不是對外的洞。
+          但 PIN 的用意本來就是防同團的其他人 —— 那正是它擋不住的對象。
+        </p>
+        <div class="fix">
+          <b>建議</b>
+          最小成本作法：在 <code>clubs</code> 加 <code>failed_attempts</code> 與 <code>locked_until</code> 兩欄，
+          連錯 5 次鎖 15 分鐘。不需要引入 Redis 或第三方套件。
+        </div>
+      </div>
+    </article>
+
+    <article class="find low">
+      <div class="stripe"></div>
+      <div class="find-body">
+        <div class="find-top">
+          <span class="id">B3</span>
+          <h3>/settings 沒走 middleware，靠不驗簽的 getSession 把關</h3>
+          <span class="sev">低</span>
+        </div>
+        <p>
+          <span class="loc">middleware.ts:40</span> 的 <code>protectedPaths</code> 只有 <code>['/', '/clubs']</code>。
+          <code>/settings</code> 靠頁面自己的 <code>getSession()</code> 擋 —— 而 Supabase 官方明確說明
+          <code>getSession()</code> 在伺服器端<strong>只解 cookie、不驗證簽章</strong>，不應作為信任依據；
+          <code>getUser()</code> 才會真的向 Auth 伺服器確認。
+        </p>
+        <div class="fix">
+          <b>建議</b>
+          把 <code>/settings</code> 加進 <code>protectedPaths</code>，讓它和其他頁面走同一條驗證路徑。
+          一行的事，而且消除了「哪些頁面用哪種驗證」的認知負擔。
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <!-- ── C 效能 ── -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-key">C</span>
+      <h2>效能與資料量</h2>
+      <span class="sec-count">3 項</span>
+    </div>
+
+    <article class="find high">
+      <div class="stripe"></div>
+      <div class="find-body">
+        <div class="find-top">
+          <span class="id">C1</span>
+          <h3>貼一份 20 人名單，打出 21 個請求且中途失敗會靜默</h3>
+          <span class="sev">高</span>
+        </div>
+        <p>
+          <span class="loc">app/(app)/clubs/[id]/page.tsx:189</span>
+          建立活動後用 <code>for...of</code> 逐一 POST 出席者。每個請求各自做一次身分驗證加一次歸屬查詢，
+          20 人就是 <strong>21 個 HTTP 往返、40+ 次資料庫查詢</strong>，序列執行。
+        </p>
+        <pre>for (const p of toAdd) {
+  await fetch(`/api/events/${eventData.id}/attendees`, { ... })
+  //   ↑ 沒有檢查 res.ok
+}</pre>
+        <p>
+          兩個問題疊在一起：慢，而且<strong>迴圈裡完全沒檢查回應</strong>。
+          第 8 個人寫入失敗，畫面照樣顯示「活動建立成功」，名單就少了一個人，沒有任何提示。
+          這也沒有交易性 —— 失敗時已寫入的前 7 人會留在資料庫。
+        </p>
+        <div class="fix">
+          <b>建議</b>
+          改成單一批次端點收一個陣列，用一次 <code>insert([...])</code> 寫入（Supabase 會保留陣列順序，
+          目前靠序列寫入維持的順序不會跑掉）。21 個請求變 2 個，順便就有了交易性與錯誤回報。
+        </div>
+      </div>
+    </article>
+
+    <article class="find mid">
+      <div class="stripe"></div>
+      <div class="find-body">
+        <div class="find-top">
+          <span class="id">C2</span>
+          <h3>每個 API 請求固定多兩次資料庫往返</h3>
+          <span class="sev">中</span>
+        </div>
+        <p>
+          <span class="loc">lib/supabase/helpers.ts</span> 的 <code>getGroupId()</code> 做兩件事：
+          <code>auth.getUser()</code> 打 Auth 伺服器，再查一次 <code>profiles</code> 表。
+          <strong>18 個 API 路由每一個都先呼叫它</strong>，而 <code>group_id</code> 對同一個使用者根本不會變。
+        </p>
+        <div class="fix">
+          <b>建議</b>
+          把 <code>group_id</code> 放進 JWT 的 custom claim（Supabase Auth Hook 支援），
+          從 token 直接讀，兩次往返變零。次選是用 Next.js 的 <code>cache()</code> 包住，
+          至少讓同一次請求內的多次呼叫只查一次。
+        </div>
+      </div>
+    </article>
+
+    <article class="find mid">
+      <div class="stripe"></div>
+      <div class="find-body">
+        <div class="find-top">
+          <span class="id">C3</span>
+          <h3>紀錄硬性截斷，舊資料看不到也沒說</h3>
+          <span class="sev">中</span>
+        </div>
+        <p>
+          領取紀錄 <span class="loc">api/pickup/route.ts:22</span> 固定 <code>limit(100)</code>，
+          入庫紀錄 <span class="loc">api/inventory/history/route.ts:31</span> 固定 <code>limit(500)</code>，
+          兩者都<strong>沒有分頁，也沒有任何「還有更多」的提示</strong>。
+        </p>
+        <p>
+          一個活躍球團一年輕鬆超過 100 筆領取。使用者會以為第 101 筆之前的紀錄不存在 ——
+          資料還在，只是看不到，這比明講「僅顯示最近 100 筆」更糟。
+        </p>
+        <div class="fix">
+          <b>建議</b>
+          短期：在列表底部加一行「僅顯示最近 100 筆」，一分鐘的事，先把誤導拿掉。
+          中期：加上以 <code>created_at</code> 為游標的分頁與月份篩選（跟 E2 一起做）。
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <!-- ── D 穩定性 ── -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-key">D</span>
+      <h2>穩定性</h2>
+      <span class="sec-count">2 項</span>
+    </div>
+
+    <article class="find high">
+      <div class="stripe"></div>
+      <div class="find-body">
+        <div class="find-top">
+          <span class="id">D1</span>
+          <h3>零測試，而 FIFO 是會算錯錢的那種程式碼</h3>
+          <span class="sev">高</span>
+        </div>
+        <p>
+          全專案<strong>沒有任何測試檔案</strong>，也沒有測試框架。
+          偏偏這裡有兩段最需要測試的程式碼：FIFO 成本計算（算的是真實金額）
+          與 LINE 訊息解析（輸入格式不受控）。
+        </p>
+        <p>
+          這不是理論風險。光是這次對話就在 FIFO 相關程式碼裡發現了<strong>兩個真實的日期邊界錯誤</strong>，
+          兩個都是靠人工推敲才發現的 —— 那正是測試最擅長攔截的類型。
+        </p>
+        <div class="fix">
+          <b>建議</b>
+          不必追求覆蓋率。先裝 Vitest，只針對三件事寫測試：FIFO 批次歸屬與成本、
+          台北時區日界（就用這次驗證的四個臨界時間點）、LINE parser 對 PRD 列出的那幾種格式。
+          三個檔案就能守住最貴的那部分。
+        </div>
+      </div>
+    </article>
+
+    <article class="find mid">
+      <div class="stripe"></div>
+      <div class="find-body">
+        <div class="find-top">
+          <span class="id">D2</span>
+          <h3>出錯時使用者看到的是 Next.js 預設錯誤頁</h3>
+          <span class="sev">中</span>
+        </div>
+        <p>
+          全專案沒有 <code>error.tsx</code>、<code>not-found.tsx</code> 或 <code>global-error.tsx</code>。
+          任何未捕捉的例外，或使用者打錯網址進到不存在的球隊頁，
+          得到的都是 Next.js 的<strong>英文預設錯誤畫面</strong> —— 跟整個介面的中文語境完全脫節，
+          而且沒有回首頁的路。
+        </p>
+        <div class="fix">
+          <b>建議</b>
+          在 <code>app/(app)/</code> 放一個 <code>error.tsx</code> 與 <code>not-found.tsx</code>，
+          沿用側邊欄的視覺，給一句中文說明和一個「回首頁儀表板」按鈕。兩個小檔案。
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <!-- ── E 功能 ── -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-key">E</span>
+      <h2>功能缺口</h2>
+      <span class="sec-count">5 項</span>
+    </div>
+
+    <article class="find mid">
+      <div class="stripe"></div>
+      <div class="find-body">
+        <div class="find-top">
+          <span class="id">E1</span>
+          <h3>球員名冊：每場活動都要重打一次名字</h3>
+          <span class="sev">中</span>
+        </div>
+        <p>
+          <code>event_attendees.display_name</code> 是純文字，<strong>不跨活動關聯</strong>。
+          同一群人每週打球，名字每週重打一次；打錯字就變成另一個人。
+        </p>
+        <p>
+          這也讓「這個人累計來過幾次、欠多少錢」這類問題<strong>在資料上無法回答</strong> ——
+          而那恰好是球隊負責人最想知道的事。
+        </p>
+        <div class="fix">
+          <b>建議</b>
+          加一張 <code>club_members</code>（club_id、姓名、預設費用、是否免費），
+          <code>event_attendees</code> 加一個 nullable 的 <code>member_id</code>。
+          建立活動時提供常用名單勾選，LINE 解析出的名字自動比對現有成員。
+          保留純文字欄位，臨時來的客人照樣直接打字。
+        </div>
+      </div>
+    </article>
+
+    <article class="find mid">
+      <div class="stripe"></div>
+      <div class="find-body">
+        <div class="find-top">
+          <span class="id">E2</span>
+          <h3>沒有匯出，財務資料出不去</h3>
+          <span class="sev">中</span>
+        </div>
+        <p>
+          全專案<strong>沒有任何 CSV 或試算表匯出</strong>。
+          結算試算出來的數字只能在畫面上看，要交帳、對帳、報稅或給隊員看明細，就得手動抄。
+        </p>
+        <div class="fix">
+          <b>建議</b>
+          三個地方各加一顆匯出鈕：結算結果、入庫紀錄、活動出席與收費明細。
+          純前端組 CSV 字串下載即可，不需要後端也不需要套件。注意加 BOM，否則 Excel 開中文會亂碼。
+        </div>
+      </div>
+    </article>
+
+    <article class="find mid">
+      <div class="stripe"></div>
+      <div class="find-body">
+        <div class="find-top">
+          <span class="id">E3</span>
+          <h3>紀錄一多就沒有搜尋與篩選</h3>
+          <span class="sev">中</span>
+        </div>
+        <p>
+          領取紀錄、活動列表都<strong>沒有搜尋框，也沒有日期或人員篩選</strong>。
+          唯一有篩選能力的是結算對話框。找「上個月阿明領了幾桶」只能用眼睛捲。
+        </p>
+        <div class="fix">
+          <b>建議</b>
+          領取紀錄加姓名搜尋與月份切換；活動列表加日期區間與「未結算 / 已結算」切換。
+          資料量還小，前端過濾就夠，等分頁（C3）做了再移到後端。
+        </div>
+      </div>
+    </article>
+
+    <article class="find low">
+      <div class="stripe"></div>
+      <div class="find-body">
+        <div class="find-top">
+          <span class="id">E4</span>
+          <h3>催繳費：管道已經建好，只差沒接上</h3>
+          <span class="sev">低</span>
+        </div>
+        <p>
+          系統已經有<strong>完整的 LINE 推播能力</strong>（Messaging API、Flex 訊息、postback 按鈕、
+          每日 cron），目前只用在低庫存提醒。而未繳費名單是現成的資料。
+        </p>
+        <p>
+          A1 修好之後，「誰還沒繳、共多少錢」就是一個明確的數字。
+          在活動詳情加一顆「產生催繳訊息」，比照現有的下訂草稿做法產生可轉貼的文字 ——
+          複用既有元件，新增的程式碼很少，但直接解決球隊負責人每週都要做的事。
+        </p>
+        <div class="fix">
+          <b>建議</b>
+          先做「產生文字草稿供轉貼」，不要做自動推播 —— 催繳訊息由人決定何時發、發給誰，
+          自動推播容易造成困擾。這也完全不佔用 LINE 的推播額度。
+        </div>
+      </div>
+    </article>
+
+    <article class="find low">
+      <div class="stripe"></div>
+      <div class="find-body">
+        <div class="find-top">
+          <span class="id">E5</span>
+          <h3>整個球團共用一組帳號密碼</h3>
+          <span class="sev">低</span>
+        </div>
+        <p>
+          一個 group 對應一組 Supabase 帳號，所有人共用。
+          沒有角色、沒有個人身分，<code>created_by</code> 欄位存的永遠是同一個人。
+          誰改了什麼、誰刪了哪筆紀錄，<strong>查不出來</strong>。
+        </p>
+        <div class="fix">
+          <b>建議</b>
+          目前規模（單一球館）這樣可用，不急。但若要開放給多球館使用，
+          就得走 PRD 的 Phase 2：邀請制帳號 + 角色（管理員 / 隊長 / 檢視），
+          與 B1 是同一個工程。做之前先確認商業模式，別為了假想的需求提前投資。
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <!-- ── F 結構 ── -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-key">F</span>
+      <h2>程式碼結構</h2>
+      <span class="sec-count">2 項</span>
+    </div>
+
+    <article class="find mid">
+      <div class="stripe"></div>
+      <div class="find-body">
+        <div class="find-top">
+          <span class="id">F1</span>
+          <h3>LINE 解析器埋在頁面元件裡，測不到也用不到</h3>
+          <span class="sev">中</span>
+        </div>
+        <p>
+          <code>parseLineMessage()</code> 寫在
+          <span class="loc">app/(app)/clubs/[id]/page.tsx:37</span> 的頁面檔案裡，
+          是一個 50 行的純函式，卻因為位置而<strong>無法被單獨測試，也無法重用</strong>。
+        </p>
+        <p>
+          它處理的是<strong>完全不受控的輸入</strong> —— 使用者從 LINE 複製的任意文字，
+          PRD 光是列舉就有六種格式變體。這正是最該有測試的那種函式。
+        </p>
+        <div class="fix">
+          <b>建議</b>
+          搬到 <code>lib/line-parser.ts</code>。純函式、零依賴，搬完立刻就能配合 D1 寫測試 ——
+          PRD 第 4.3 節的案例表格直接就是現成的測試案例。
+        </div>
+      </div>
+    </article>
+
+    <article class="find low">
+      <div class="stripe"></div>
+      <div class="find-body">
+        <div class="find-top">
+          <span class="id">F2</span>
+          <h3>兩個超大檔案各自塞了三四個職責</h3>
+          <span class="sev">低</span>
+        </div>
+        <p>
+          <span class="loc">clubs/[id]/page.tsx</span> 有 <strong>843 行</strong>，
+          裡面包含解析器、建立活動對話框、PIN 閘門與頁面本體四件事。
+          <span class="loc">inventory-manager-dialog.tsx</span> 有 <strong>586 行</strong>，
+          四個分頁的邏輯全擠在一個元件裡。
+        </p>
+        <p>
+          這正是先前踩過的坑的土壤 —— 入庫表單有兩份實作，就是因為職責邊界不清楚。
+        </p>
+        <div class="fix">
+          <b>建議</b>
+          不必大改。把 <code>CreateEventDialog</code> 與 <code>PinGate</code> 各自搬成獨立檔案（F1 順手一起做），
+          頁面就回到 300 行以內。庫存管理中心可以等下次真的要改它時再拆。
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <!-- ── 執行順序 ── -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-key">→</span>
+      <h2>建議執行順序</h2>
+      <span class="sec-count">4 梯次</span>
+    </div>
+
+    <div class="plan">
+      <div class="wave">
+        <div class="wave-n">第一梯</div>
+        <div class="wave-b">
+          <h4>會給出錯誤答案的</h4>
+          <p>
+            利潤數字現在是錯的，而且錯在使用者最常看的時機；出席者寫入失敗完全沒有回報。
+            這兩件都是「系統告訴你的事情不對」，優先於一切。
+          </p>
+          <p class="refs">A1 利潤應收／實收 · C1 批次寫入與錯誤處理</p>
+        </div>
+      </div>
+
+      <div class="wave">
+        <div class="wave-n">第二梯</div>
+        <div class="wave-b">
+          <h4>撐住已經在跑的東西</h4>
+          <p>
+            FIFO 這次被抓到兩個日期錯誤，說明它需要測試守著。錯誤頁與紀錄截斷提示都是小工，
+            但直接影響使用者對系統的信任。
+          </p>
+          <p class="refs">D1 FIFO 與 parser 測試 · F1 抽出 parser · D2 錯誤頁 · C3 截斷提示</p>
+        </div>
+      </div>
+
+      <div class="wave">
+        <div class="wave-n">第三梯</div>
+        <div class="wave-b">
+          <h4>每週都在手動做的事</h4>
+          <p>
+            名冊、催繳、匯出、搜尋 —— 都是球隊負責人現在靠人工彌補的環節。
+            投入報酬率最高，而且 E4 建在既有的 LINE 模組上，幾乎沒有新基礎建設。
+          </p>
+          <p class="refs">E1 球員名冊 · E4 催繳草稿 · E2 CSV 匯出 · E3 搜尋篩選</p>
+        </div>
+      </div>
+
+      <div class="wave">
+        <div class="wave-n">第四梯</div>
+        <div class="wave-b">
+          <h4>成長之後才會痛的</h4>
+          <p>
+            這些現在完全感覺不到。但 B1 的隔離問題要在<strong>開放給第二個球館之前</strong>想清楚，
+            因為它會決定資料模型，事後改的成本高得多。
+          </p>
+          <p class="refs">B1 球隊隔離 · B2 嘗試次數限制 · B3 middleware 一致性 · A2 view 過濾 · C2 JWT claim · A3 FIFO 快照 · E5 多帳號 · F2 檔案拆分</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="note">
+    <h4>這份稽核怎麼做的，以及它的邊界</h4>
+    <p>
+      掃描範圍是全部 62 個 TypeScript 檔案、6 個 migration、18 個 API 路由，
+      以及 <code>docs/</code> 下的 PRD 與效能筆記。每一項發現都附了檔名行號，你可以自己去核對。
+    </p>
+    <p>
+      <strong>都是讀程式碼得到的結論，沒有實際執行過。</strong>
+      這台 WSL 的 <code>lightningcss</code> 原生模組缺失，<code>npm run build</code> 起不來。
+      所以行為類的判斷（例如 A1 的利潤顯示）是從程式碼推導的，理論上可靠，但值得你在實際畫面上確認一次。
+      至於純視覺的介面優化建議，我刻意沒有寫 —— 沒看過實際渲染就評論視覺，那是猜測不是稽核。
+    </p>
+    <p>
+      優先序反映的是「錯誤的資訊比缺少的功能更傷」這個判斷。
+      如果你的實際痛點是每週催繳很煩，那第三梯往前提完全合理 —— 這份排序是建議，不是規定。
+    </p>
+  </div>
+
+</div>

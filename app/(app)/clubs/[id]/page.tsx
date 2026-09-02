@@ -26,7 +26,10 @@ interface BadmintonEvent {
   shuttle_cost_mode: 'auto' | 'manual'; shuttle_cost: number
   shuttle_count: number | null
   is_settled: boolean; notes: string | null
-  venue_cost: number; total_revenue: number; profit: number
+  venue_cost: number
+  total_due: number; total_paid: number; total_unpaid: number
+  unpaid_count: number; payer_count: number
+  profit: number; profit_paid: number
   attendee_count: number
 }
 
@@ -184,14 +187,23 @@ function CreateEventDialog({
       const eventData = await res.json()
       if (!res.ok) throw new Error(eventData.error)
 
-      // 序列寫入，確保出席順序與 LINE 訊息一致
+      // 一次批次寫入；API 會逐筆遞增 created_at，維持與 LINE 訊息一致的出席順序
       const toAdd = parsedNames.filter(p => p.included)
-      for (const p of toAdd) {
-        await fetch(`/api/events/${eventData.id}/attendees`, {
+      if (toAdd.length > 0) {
+        const attRes = await fetch(`/api/events/${eventData.id}/attendees`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ displayName: p.name, fee: p.fee, isFree: p.isFree, paid: false }),
+          body: JSON.stringify({
+            attendees: toAdd.map(p => ({ displayName: p.name, fee: p.fee, isFree: p.isFree, paid: false })),
+          }),
         })
+        if (!attRes.ok) {
+          // 活動本身已建立，只有名單失敗——講清楚現況，別讓使用者以為整場都沒建
+          const attErr = await attRes.json().catch(() => ({}))
+          showToast(`活動已建立，但出席名單寫入失敗：${attErr.error || '請稍後於活動詳情手動補上'}`, 'error')
+          onOpenChange(false); reset(); onCreated()
+          return
+        }
       }
 
       showToast('活動建立成功', 'success')
@@ -549,8 +561,11 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
       chart: { title: '每月用球量（顆）', accessor: e => e.shuttle_count ?? 0, format: v => `${v.toLocaleString()} 顆`, barClass: 'bg-sky-500' } },
     { key: 'shuttleCost', label: '累計球費', value: fmtMoney(stats.totalShuttleCost),
       chart: { title: '每月球費', accessor: e => Number(e.shuttle_cost) || 0, format: fmtMoney, barClass: 'bg-amber-500' } },
-    { key: 'revenue', label: '累計收費', value: fmtMoney(stats.totalRevenue),
-      chart: { title: '每月收費', accessor: e => Number(e.total_revenue) || 0, format: fmtMoney, barClass: 'bg-emerald-500' } },
+    { key: 'revenue', label: '累計應收', value: fmtMoney(stats.totalDue),
+      chart: { title: '每月應收', accessor: e => Number(e.total_due) || 0, format: fmtMoney, barClass: 'bg-emerald-500' } },
+    { key: 'unpaid', label: '待收款', value: fmtMoney(stats.totalUnpaid),
+      className: stats.totalUnpaid > 0 ? 'text-amber-600 dark:text-amber-500' : undefined,
+      chart: { title: '每月待收款', accessor: e => Number(e.total_unpaid) || 0, format: fmtMoney, barClass: 'bg-amber-500' } },
     { key: 'profit', label: '累計利潤', value: profitLabel(stats.totalProfit), className: profitClass(stats.totalProfit),
       chart: { title: '每月利潤', accessor: e => Number(e.profit) || 0, format: profitLabel, barClass: 'bg-blue-500' } },
     { key: 'avgProfit', label: '平均每場利潤', value: profitLabel(stats.avgProfit), className: profitClass(stats.avgProfit) },
@@ -673,7 +688,7 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
               {[
                 { label: '場租', value: fmtMoney(stats.totalVenueCost) },
                 { label: '球費', value: fmtMoney(stats.totalShuttleCost) },
-                { label: '收費', value: fmtMoney(stats.totalRevenue) },
+                { label: '應收', value: fmtMoney(stats.totalDue) },
               ].map(item => (
                 <div key={item.label} className="rounded-lg bg-background/70 px-2.5 py-2">
                   <div className="text-[11px] text-muted-foreground">{item.label}</div>
@@ -685,6 +700,11 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
               <span className="text-xs font-semibold text-muted-foreground">累計利潤</span>
               <span className={`text-lg font-black ${profitClass(stats.totalProfit)}`}>{profitLabel(stats.totalProfit)}</span>
             </div>
+            {stats.totalUnpaid > 0 && (
+              <p className="mt-2 text-[11px] text-amber-600 dark:text-amber-500 text-center">
+                利潤以應收計；尚有 {stats.totalUnpaidCount} 人次未繳，共 {fmtMoney(stats.totalUnpaid)}
+              </p>
+            )}
           </div>
         )}
 
@@ -697,7 +717,7 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
             <span className="text-right">場租</span>
             <span className="text-right">用球數</span>
             <span className="text-right">球費</span>
-            <span className="text-right">收費</span>
+            <span className="text-right">應收</span>
             <span className="text-right">利潤</span>
             <span className="text-center">狀態</span>
             <span className="text-center">操作</span>
@@ -765,7 +785,14 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
                   <div className="text-sm text-right">{fmtMoney(ev.venue_cost)}</div>
                   <div className="text-sm text-right">{ev.shuttle_count != null ? `${ev.shuttle_count.toLocaleString()} 顆` : '—'}</div>
                   <div className="text-sm text-right">{fmtMoney(ev.shuttle_cost)}</div>
-                  <div className="text-sm text-right">{fmtMoney(ev.total_revenue)}</div>
+                  <div className="text-sm text-right">
+                    {fmtMoney(ev.total_due)}
+                    {ev.unpaid_count > 0 && (
+                      <span className="block text-[10px] text-amber-600 dark:text-amber-500 font-medium">
+                        {ev.unpaid_count} 人未繳
+                      </span>
+                    )}
+                  </div>
                   <div className={`text-sm text-right ${profitClass(ev.profit)}`}>{profitLabel(ev.profit)}</div>
                   <div className="flex justify-center">
                     {ev.is_settled ? (
@@ -810,7 +837,14 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
               <div className="text-right">{fmtMoney(stats.totalVenueCost)}</div>
               <div className="text-right">{stats.totalShuttleCount.toLocaleString()} 顆</div>
               <div className="text-right">{fmtMoney(stats.totalShuttleCost)}</div>
-              <div className="text-right">{fmtMoney(stats.totalRevenue)}</div>
+              <div className="text-right">
+                {fmtMoney(stats.totalDue)}
+                {stats.totalUnpaid > 0 && (
+                  <span className="block text-[10px] font-medium text-amber-600 dark:text-amber-500">
+                    未收 {fmtMoney(stats.totalUnpaid)}
+                  </span>
+                )}
+              </div>
               <div className={`text-right ${profitClass(stats.totalProfit)}`}>{profitLabel(stats.totalProfit)}</div>
               <div></div>
               <div></div>
