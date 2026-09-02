@@ -13,7 +13,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { amount, password, type_id, unit_price } = await request.json()
+    const { amount, password, type_id, unit_price, restock_date } = await request.json()
 
     if (!amount || amount < 1) {
       return NextResponse.json({ error: '進貨數量必須至少為 1 桶' }, { status: 400 })
@@ -21,6 +21,12 @@ export async function POST(request: Request) {
     
     if (!type_id) {
        return NextResponse.json({ error: '必須選擇球種' }, { status: 400 })
+    }
+
+    // 進貨日期可回填（補登過去的入庫）。先進先出 試算與結算都以 created_at 排序，
+    // 日期填錯會讓該批球在活動日「還不存在」，導致試算報庫存不足。
+    if (restock_date !== undefined && Number.isNaN(Date.parse(restock_date))) {
+      return NextResponse.json({ error: '進貨日期格式不正確' }, { status: 400 })
     }
 
     // 檢查是否有設定入庫密碼
@@ -45,6 +51,7 @@ export async function POST(request: Request) {
         shuttlecock_type_id: type_id,
         quantity: parseInt(amount, 10),
         unit_price: unit_price ? parseInt(unit_price, 10) : 0,
+        ...(restock_date ? { created_at: restock_date } : {}),
         created_by: (await supabase.auth.getUser()).data.user?.id
       })
     

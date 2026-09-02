@@ -27,6 +27,20 @@ interface PickupRecord {
     created_at: string;
 }
 
+const TAIPEI_OFFSET = '+08:00'
+
+// 查詢區間的日界必須以台北時區為準。
+// `new Date('YYYY-MM-DD')` 是在 UTC 00:00 解析（＝台北 08:00），直接拿來比對會讓
+// 區間兩端整體往後偏 8 小時：漏掉起始日 00:00–07:59、多收結束日隔天 00:00–07:59 的領用。
+// dayOffset=0 取當日 00:00（起始界），dayOffset=1 取隔日 00:00（結束界，配合嚴格小於）。
+function taipeiDayBoundary(dateStr: string, dayOffset: number): number | null {
+    const day = String(dateStr).slice(0, 10)   // 容忍傳入完整 ISO 字串
+    const d = new Date(`${day}T00:00:00${TAIPEI_OFFSET}`)
+    if (Number.isNaN(d.getTime())) return null
+    d.setUTCDate(d.getUTCDate() + dayOffset)
+    return d.getTime()
+}
+
 export async function POST(request: Request) {
   const supabase = await createClient()
   try {
@@ -38,6 +52,10 @@ export async function POST(request: Request) {
     const { start_date, end_date, picker_names, shuttlecock_type_ids } = await request.json()
     const pickerNames: string[] = Array.isArray(picker_names) ? picker_names : []
     const typeIds_filter: string[] = Array.isArray(shuttlecock_type_ids) ? shuttlecock_type_ids : []
+
+    // 區間邊界只需換算一次
+    const periodStart = start_date ? taipeiDayBoundary(start_date, 0) : null
+    const periodEnd = end_date ? taipeiDayBoundary(end_date, 1) : null
 
     // 1. 獲取所有入庫紀錄 (依時間排序)
     const { data: restocks, error: restockError } = await supabase
@@ -95,8 +113,9 @@ export async function POST(request: Request) {
             let currentPickupCost = 0;
             
             // 判斷該領取是否在查詢區間內，且符合姓名篩選
-            const isWithinPeriod = (!start_date || new Date(pickup.created_at) >= new Date(start_date)) &&
-                                   (!end_date || new Date(pickup.created_at) < new Date(new Date(end_date).getTime() + 86400000)) &&
+            const pickedAt = new Date(pickup.created_at).getTime();
+            const isWithinPeriod = (periodStart === null || pickedAt >= periodStart) &&
+                                   (periodEnd === null || pickedAt < periodEnd) &&
                                    (pickerNames.length === 0 || pickerNames.includes(pickup.picker_name));
 
             while (quantityToPick > 0) {
