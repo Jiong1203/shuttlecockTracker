@@ -62,6 +62,22 @@ interface ShuttlecockType {
   is_active: boolean
 }
 
+function todayLocalISO() {
+  const d = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+// 把使用者選的日期（本地時區）組成 timestamptz，並保留當下時分秒。
+// 先進先出 的批次歸屬依賴 created_at 排序，同一天多筆入庫若都落在 00:00 會失去先後順序。
+function restockDateToISO(dateStr: string) {
+  const now = new Date()
+  const d = new Date(`${dateStr}T00:00:00`)
+  if (Number.isNaN(d.getTime())) return undefined
+  d.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds())
+  return d.toISOString()
+}
+
 export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen, onOpenChange, initialTab = 'overview', initialTypes = [] }: InventoryManagerDialogProps) {
   const [internalOpen, setInternalOpen] = useState(false)
   const isOpen = controlledOpen ?? internalOpen
@@ -83,6 +99,7 @@ export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen
   const [selectedTypeId, setSelectedTypeId] = useState(initialTypes[0]?.id ?? "")
   const [amount, setAmount] = useState("10")
   const [unitPrice, setUnitPrice] = useState("")
+  const [restockDate, setRestockDate] = useState(todayLocalISO())
   const [error, setError] = useState<string | null>(null)
   const [formLoading, setFormLoading] = useState(false)
   const [lastVerifiedAt, setLastVerifiedAt] = useState<number | null>(null)
@@ -219,7 +236,8 @@ export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen
                 password: restockPassword,
                 amount: parseInt(amount, 10),
                 type_id: selectedTypeId,
-                unit_price: unitPrice ? parseInt(unitPrice, 10) : 0
+                unit_price: unitPrice ? parseInt(unitPrice, 10) : 0,
+                restock_date: restockDateToISO(restockDate)
             })
         })
         const data = await res.json()
@@ -232,6 +250,7 @@ export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen
             })
             setAmount("10")
             setUnitPrice("")
+            setRestockDate(todayLocalISO())
             setLastVerifiedAt(Date.now())
             fetchInventory()
             fetchHistory()
@@ -435,6 +454,18 @@ export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen
                                          {types.map(t => <option key={t.id} value={t.id}>{t.brand} {t.name}</option>)}
                                      </select>
                                  </div>
+                                 <div className="space-y-1">
+                                     <Label>進貨日期</Label>
+                                     <Input
+                                        type="date"
+                                        value={restockDate}
+                                        onChange={e => setRestockDate(e.target.value)}
+                                        className="h-10"
+                                     />
+                                     <p className="text-xs text-muted-foreground">
+                                        補登過去的入庫請改成實際進貨日，否則開團紀錄的 先進先出 試算會算不到這批球。
+                                     </p>
+                                 </div>
                                  <div className="grid grid-cols-2 gap-4">
                                      <div className="space-y-1">
                                          <Label>數量 (桶)</Label>
@@ -460,6 +491,12 @@ export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen
                                 <div>
                                     <p className="text-xs text-muted-foreground uppercase">入庫項目</p>
                                     <p className="text-xl font-bold">{types.find(t=>t.id===selectedTypeId)?.brand} {types.find(t=>t.id===selectedTypeId)?.name}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-muted-foreground uppercase">進貨日期</p>
+                                    <p className={`text-lg font-bold ${restockDate !== todayLocalISO() ? 'text-orange-600' : ''}`}>
+                                        {restockDate}{restockDate !== todayLocalISO() && '（補登）'}
+                                    </p>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4 text-left">
                                     <div className="bg-background p-3 rounded border">
