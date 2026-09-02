@@ -5,8 +5,11 @@ export interface EventForStats {
   venue_cost: number
   shuttle_cost: number
   shuttle_count: number | null
-  total_revenue: number
-  profit: number
+  total_due: number      // 應收
+  total_paid: number     // 實收
+  total_unpaid: number   // 未收
+  unpaid_count: number
+  profit: number         // 應收基準
   attendee_count: number
   is_settled: boolean
 }
@@ -17,10 +20,13 @@ export interface EventAggregates {
   totalVenueCost: number
   totalShuttleCost: number
   totalShuttleCount: number
-  totalRevenue: number
-  totalProfit: number
-  avgProfit: number      // 每場平均利潤
-  avgAttendance: number  // 每場平均出席人數
+  totalDue: number          // 累計應收
+  totalPaid: number         // 累計實收
+  totalUnpaid: number       // 累計未收
+  totalUnpaidCount: number  // 累計未繳人次
+  totalProfit: number       // 應收基準
+  avgProfit: number         // 每場平均利潤
+  avgAttendance: number     // 每場平均出席人數
 }
 
 export function computeEventStats(events: EventForStats[]): EventAggregates {
@@ -30,7 +36,10 @@ export function computeEventStats(events: EventForStats[]): EventAggregates {
       a.totalVenueCost += Number(e.venue_cost) || 0
       a.totalShuttleCost += Number(e.shuttle_cost) || 0
       a.totalShuttleCount += e.shuttle_count ?? 0
-      a.totalRevenue += Number(e.total_revenue) || 0
+      a.totalDue += Number(e.total_due) || 0
+      a.totalPaid += Number(e.total_paid) || 0
+      a.totalUnpaid += Number(e.total_unpaid) || 0
+      a.totalUnpaidCount += e.unpaid_count ?? 0
       a.totalProfit += Number(e.profit) || 0
       a.totalAttendance += e.attendee_count ?? 0
       if (e.is_settled) a.settledCount += 1
@@ -38,7 +47,8 @@ export function computeEventStats(events: EventForStats[]): EventAggregates {
     },
     {
       totalVenueCost: 0, totalShuttleCost: 0, totalShuttleCount: 0,
-      totalRevenue: 0, totalProfit: 0, totalAttendance: 0, settledCount: 0,
+      totalDue: 0, totalPaid: 0, totalUnpaid: 0, totalUnpaidCount: 0,
+      totalProfit: 0, totalAttendance: 0, settledCount: 0,
     }
   )
 
@@ -48,7 +58,10 @@ export function computeEventStats(events: EventForStats[]): EventAggregates {
     totalVenueCost: acc.totalVenueCost,
     totalShuttleCost: acc.totalShuttleCost,
     totalShuttleCount: acc.totalShuttleCount,
-    totalRevenue: acc.totalRevenue,
+    totalDue: acc.totalDue,
+    totalPaid: acc.totalPaid,
+    totalUnpaid: acc.totalUnpaid,
+    totalUnpaidCount: acc.totalUnpaidCount,
     totalProfit: acc.totalProfit,
     avgProfit: count ? acc.totalProfit / count : 0,
     avgAttendance: count ? acc.totalAttendance / count : 0,

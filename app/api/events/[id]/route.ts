@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getGroupId } from '@/lib/supabase/helpers'
+import { calcEventFinance } from '@/lib/event-finance'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,11 +41,7 @@ export async function GET(
 
   if (error) return NextResponse.json({ error: '找不到此活動' }, { status: 404 })
 
-  const venueCost = data.court_count * data.hours * data.hourly_rate
-  const totalRevenue = data.event_attendees
-    .filter((a: { paid: boolean; is_free: boolean }) => a.paid && !a.is_free)
-    .reduce((sum: number, a: { fee: number }) => sum + Number(a.fee), 0)
-  const profit = totalRevenue - Number(data.shuttle_cost) - venueCost
+  const finance = calcEventFinance(data.event_attendees, data)
 
   // 依 created_at 升冪排列，確保與 LINE 訊息新增順序一致
   const sortedAttendees = [...data.event_attendees].sort(
@@ -53,7 +50,7 @@ export async function GET(
 
   const { clubs, event_attendees, ...rest } = data
   void clubs; void event_attendees
-  return NextResponse.json({ ...rest, event_attendees: sortedAttendees, venue_cost: venueCost, total_revenue: totalRevenue, profit })
+  return NextResponse.json({ ...rest, event_attendees: sortedAttendees, ...finance })
 }
 
 // PATCH /api/events/[id] — 更新活動資訊或標記已結算
