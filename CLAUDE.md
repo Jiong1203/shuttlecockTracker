@@ -75,9 +75,8 @@ components/
   app-shell.tsx          # Admin shell: sidebar container + topbar (breadcrumb, collapse, mobile drawer)
   app-sidebar.tsx        # Fixed dark-green sidebar (nav + group name / settings / logout / theme)
   inventory-stats.tsx    # Home KPI summary row (4 stat cards)
-  group-settings-form.tsx  # Account settings form — shared by /settings page & GroupSettingsDialog
+  group-settings-form.tsx  # Account settings form — used by the /settings page
   event-detail-dialog.tsx  # Event detail: attendees, FIFO calculator, settlement
-  event-tracker-dialog.tsx # Header button → link to /clubs
   *.tsx                  # Other feature components (pickup, restock, settlement, etc.)
 lib/
   supabase/
@@ -98,7 +97,7 @@ docs/
 
 ### App shell (sidebar) & route group
 - `app/(app)/layout.tsx` is a **Server Component** that fetches the current group (name + contact_email) and wraps all pages in `<AppShell>` (`components/app-shell.tsx`) — a fixed dark-green sidebar + topbar (breadcrumb, collapse, mobile drawer). `/`, `/settings`, `/clubs`, `/clubs/[id]` all live inside `(app)` and share this shell; `/login` and `/manual` stay outside it. The `(app)` group does **not** change URLs.
-- Header controls (settings / logout / theme) live in `app-sidebar.tsx`; account settings is a standalone page at `/settings`, not a dialog. `HomeHeaderControls` in `home-interactive.tsx` is legacy/unused (the old top toolbar) but still compiles.
+- Header controls (settings / logout / theme) live in `app-sidebar.tsx`; account settings is a standalone page at `/settings`, not a dialog. The old top toolbar (`HomeHeaderControls`, `group-settings-dialog.tsx`, `event-tracker-dialog.tsx`) was removed once the sidebar replaced it.
 
 ### Home page data flow (Server → Client split)
 - `app/(app)/page.tsx` is a **Server Component**: it reads the session from cookies (`getSession()`, no extra network round-trip since middleware already validated), fetches `inventory_summary` + `pickup_records` (+ a scoped monthly-pickup query for the KPI row) in parallel, and passes them down as props. It renders `<InventoryStats>` (KPI row) above the inventory display.
@@ -226,13 +225,13 @@ groups → clubs → badminton_events → event_attendees
 ### Recipients (two independent channels)
 - **Email** → `groups.contact_email` (often null on legacy accounts). Null → email channel skipped.
 - **LINE** → `groups.line_user_id` when `line_enabled` is true. Not bound → LINE channel skipped. See LINE module below.
-- `group-settings-dialog.tsx` prompts users to fill an inbox and/or bind LINE.
+- The `/settings` page (`group-settings-form.tsx`) prompts users to fill an inbox and/or bind LINE.
 
 ## LINE 低庫存通知模組（Low-Stock LINE Alert）
 
 ### Architecture
 - Second notification channel alongside email; **not** LINE Notify (discontinued 2025-03-31) — uses the **LINE Messaging API** with a single shared **Official Account**.
-- `lib/line.ts` — `pushLineMessage` (Push text) / `pushLineMessages` (Push arbitrary message objects, e.g. Flex) / `replyLineMessage` (Reply API, **free**, uses webhook `replyToken`) / `buildLowStockLineText` (plain-text, LINE has no HTML) / `buildLowStockFlexMessage` (Flex bubble w/ postback button) / `buildOrderDraftLineText`. Calls Messaging API via `fetch`, Bearer `LINE_CHANNEL_ACCESS_TOKEN`. No SDK.
+- `lib/line.ts` — `pushLineMessages` (Push arbitrary message objects, e.g. Flex) / `replyLineMessage` (Reply API, **free**, uses webhook `replyToken`) / `buildLowStockFlexMessage` (Flex bubble w/ postback button; builds its body text via the module-private `buildLowStockLineText`, since LINE has no HTML) / `buildOrderDraftLineText`. Calls Messaging API via `fetch`, Bearer `LINE_CHANNEL_ACCESS_TOKEN`. No SDK.
 - The cron pushes LINE alongside email in the same per-group loop (see per-channel dedup above).
 
 ### Low-stock message & on-demand order draft (cost-aware)
@@ -240,7 +239,7 @@ groups → clubs → badminton_events → event_attendees
 - Button carries `postback.data = "action=order_draft&gid=<group_id>"`. When tapped, LINE sends a **postback event** to the webhook → `handleOrderDraft` re-scans `inventory_summary` for that group's **current** low-stock items and **replies** (free) with `buildOrderDraftLineText` (clean, forwardable, quantity left blank for manual fill). Security: verifies the tapper's `userId` matches the group's bound `line_user_id` before replying.
 
 ### Account binding flow (user links their group to a LINE userId)
-1. Settings dialog (`group-settings-dialog.tsx`) → "開啟 LINE 通知" → `PATCH /api/group` with `{ lineAction: 'enable' }` → server generates a **6-digit code** (collision-checked vs other groups' unexpired codes) with a **10-min expiry**, stores on `groups`.
+1. Settings page (`group-settings-form.tsx`) → "開啟 LINE 通知" → `PATCH /api/group` with `{ lineAction: 'enable' }` → server generates a **6-digit code** (collision-checked vs other groups' unexpired codes) with a **10-min expiry**, stores on `groups`.
 2. UI shows the OA add-friend QR (`public/line-add-friend.png` static asset) + `NEXT_PUBLIC_LINE_BASIC_ID` + the code.
 3. User adds the OA and sends the code in chat → LINE hits `POST /api/line/webhook`.
 4. Webhook (`app/api/line/webhook/route.ts`): verifies `x-line-signature` (HMAC-SHA256 over the **raw body** with `LINE_CHANNEL_SECRET`, Web Crypto, timing-safe compare) → matches the code against unexpired `groups.line_verify_code` via **service role** (no cookie) → writes `line_user_id`, clears the code, replies "綁定成功".
