@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { PICKUP_HISTORY_LIMIT } from "@/lib/limits"
 import {
   Table,
   TableBody,
@@ -121,6 +122,13 @@ export function PickupHistory({ records, onDelete }: PickupHistoryProps) {
           </TableBody>
         </Table>
       </div>
+
+      {/* 後端固定回傳最近 100 筆。不說明的話，使用者會以為更早的紀錄不存在。 */}
+      {records.length >= PICKUP_HISTORY_LIMIT && (
+        <p className="px-4 py-2.5 text-xs text-muted-foreground text-center border-t">
+          僅顯示最近 {PICKUP_HISTORY_LIMIT} 筆領取紀錄，更早的紀錄仍保存於系統中
+        </p>
+      )}
     </div>
 
       <Dialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>

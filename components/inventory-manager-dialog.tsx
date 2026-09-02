@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
+import { RESTOCK_HISTORY_LIMIT } from "@/lib/limits"
 import {
   Dialog,
   DialogContent,
@@ -362,6 +363,11 @@ export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen
                                     )}
                                 </tbody>
                             </table>
+                            {history.length >= RESTOCK_HISTORY_LIMIT && (
+                                <p className="px-4 py-2.5 text-xs text-muted-foreground text-center border-t">
+                                    僅顯示最近 {RESTOCK_HISTORY_LIMIT} 筆入庫紀錄，更早的紀錄仍保存於系統中
+                                </p>
+                            )}
                         </div>
                     )}
                 </div>

@@ -12,10 +12,10 @@
 |------|------|------|--------|
 | 一 | A1 利潤應收／實收拆分 | ✅ | `feat/audit-wave-1` |
 | 一 | C1 出席者批次寫入與錯誤處理 | ✅ | `feat/audit-wave-1` |
-| 二 | F1 抽出 LINE parser | ⬜ | — |
-| 二 | D1 FIFO 與 parser 測試 | ⬜ | — |
-| 二 | D2 錯誤頁與 404 頁 | ⬜ | — |
-| 二 | C3 紀錄截斷提示 | ⬜ | — |
+| 二 | F1 抽出 LINE parser | ✅ | `feat/audit-wave-2` |
+| 二 | D1 FIFO 與 parser 測試 | ✅ | `feat/audit-wave-2` |
+| 二 | D2 錯誤頁與 404 頁 | ✅ | `feat/audit-wave-2` |
+| 二 | C3 紀錄截斷提示 | ✅ | `feat/audit-wave-2` |
 | 三 | E1 球員名冊 | ⏸ | 需 DB migration |
 | 三 | E4 催繳訊息草稿 | ⬜ | — |
 | 三 | E2 CSV 匯出 | ⬜ | — |
@@ -34,6 +34,46 @@
 ## 變更紀錄
 
 <!-- 每完成一項，於此區塊由新到舊追加一節 -->
+
+### 2026-09-02 · 第二梯完成
+
+#### F1 — 抽出 LINE 訊息解析器
+
+`parseLineMessage()` 從 `app/(app)/clubs/[id]/page.tsx`（843 行）搬到 `lib/line-parser.ts`，
+補上 `ParsedLineMessage` 型別。頁面降至 826 行，解析器成為可獨立測試的純函式。
+
+#### D1 — 建立測試基礎並涵蓋三處高風險邏輯
+
+導入 Vitest，新增 `npm test` / `npm run test:watch`。**46 個測試全數通過**。
+
+| 測試檔 | 涵蓋範圍 | 案例數 |
+|--------|----------|--------|
+| `lib/line-parser.test.ts` | PRD 第 4.3 節的六種名單格式、候補截斷、活動資訊解析、邊界情況 | 20 |
+| `lib/date-boundary.test.ts` | 台北日界換算、結算區間的四個臨界時刻、跨月跨年 | 14 |
+| `lib/event-finance.test.ts` | 應收／實收／未收、免費者處理、兩種利潤基準 | 12 |
+
+順帶抽出 `lib/date-boundary.ts`：原本 `/api/events/[id]/shuttle-cost` 與
+`/api/settlement/calculate` 各有一份台北日界換算，現改為共用單一實作，並被測試涵蓋。
+其中「行內的『候補 0』不可誤判為區段標題」與「結算區間四個臨界時刻」兩組案例，
+守的正是先前實際發生過的錯誤。
+
+**尚未涵蓋**：FIFO 批次歸屬演算法本身仍在 route 內（`settlement/calculate` 與 `shuttle-cost`
+是兩套不同實作）。抽出共用需要較大重構，風險高於本梯其餘項目，另列待辦。
+
+#### D2 — 錯誤邊界與找不到頁面
+
+新增 `app/(app)/error.tsx` 與 `app/(app)/not-found.tsx`，取代 Next.js 的英文預設頁。
+兩者都在 AppShell 之內，保有側邊欄，並提供重新載入與回首頁的出口。
+
+#### C3 — 列表截斷提示
+
+領取紀錄（100 筆）與入庫紀錄（500 筆）在達到上限時顯示
+「僅顯示最近 N 筆，更早的紀錄仍保存於系統中」。上限提取至 `lib/limits.ts` 由前後端共用
+（Next.js 的 route.ts 不允許匯出非約定名稱，故不能定義在 route 內）。
+
+**環境限制**：本機 `npm install` 因 WSL 無法對 `/mnt/d` 上的 node_modules 執行 chmod 而失敗
+（EPERM），`vitest` 已寫入 `package.json` 但需在 Windows 端執行一次 `npm install` 才會實際安裝。
+測試以 `npx vitest run` 驗證通過。同一限制也使 `npm run build` 無法在本機執行。
 
 ### 2026-09-02 · 第一梯完成
 

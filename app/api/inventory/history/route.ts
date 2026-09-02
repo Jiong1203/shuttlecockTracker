@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { getGroupId } from '@/lib/supabase/helpers'
+import { RESTOCK_HISTORY_LIMIT } from '@/lib/limits'
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ export async function GET(request: Request) {
       `)
       .eq('group_id', groupId)
       .order('created_at', { ascending: false })
-      .limit(500)
+      .limit(RESTOCK_HISTORY_LIMIT)
 
     if (startDate) {
       query = query.gte('created_at', startDate)

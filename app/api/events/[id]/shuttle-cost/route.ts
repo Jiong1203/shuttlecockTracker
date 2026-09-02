@@ -1,20 +1,11 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getGroupId } from '@/lib/supabase/helpers'
+import { taipeiDayAfter } from '@/lib/date-boundary'
 
 export const dynamic = 'force-dynamic'
 
 const PIECES_PER_TUBE = 12    // 1 桶 = 12 顆，與 event-detail-dialog.tsx 的 FifoCalculator 一致
-const TAIPEI_OFFSET = '+08:00'
-
-// 「活動日（含當天）」的嚴格上界＝活動日台北時間隔天 00:00。
-// 不可用 `${event_date}T23:59:59+00:00`：UTC 午夜不是台北午夜，該界線實際落在
-// 台北隔天 07:59，會把隔天凌晨的領用誤算成活動前就已用掉。
-function taipeiDayAfter(eventDate: string) {
-  const d = new Date(`${eventDate}T00:00:00${TAIPEI_OFFSET}`)
-  d.setUTCDate(d.getUTCDate() + 1)
-  return d.toISOString()
-}
 
 const fmtTubes = (n: number) => String(Math.round(n * 100) / 100)
 const toPieces = (tubes: number) => Math.round(tubes * PIECES_PER_TUBE)
