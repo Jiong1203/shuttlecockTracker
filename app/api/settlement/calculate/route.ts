@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getGroupId } from '@/lib/supabase/helpers'
+import { taipeiDayBoundary } from '@/lib/date-boundary'
 
 export const dynamic = "force-dynamic";
 
@@ -25,20 +26,6 @@ interface PickupRecord {
     quantity: number;
     picker_name: string;
     created_at: string;
-}
-
-const TAIPEI_OFFSET = '+08:00'
-
-// 查詢區間的日界必須以台北時區為準。
-// `new Date('YYYY-MM-DD')` 是在 UTC 00:00 解析（＝台北 08:00），直接拿來比對會讓
-// 區間兩端整體往後偏 8 小時：漏掉起始日 00:00–07:59、多收結束日隔天 00:00–07:59 的領用。
-// dayOffset=0 取當日 00:00（起始界），dayOffset=1 取隔日 00:00（結束界，配合嚴格小於）。
-function taipeiDayBoundary(dateStr: string, dayOffset: number): number | null {
-    const day = String(dateStr).slice(0, 10)   // 容忍傳入完整 ISO 字串
-    const d = new Date(`${day}T00:00:00${TAIPEI_OFFSET}`)
-    if (Number.isNaN(d.getTime())) return null
-    d.setUTCDate(d.getUTCDate() + dayOffset)
-    return d.getTime()
 }
 
 export async function POST(request: Request) {

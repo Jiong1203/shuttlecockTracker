@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getGroupId } from '@/lib/supabase/helpers'
+import { PICKUP_HISTORY_LIMIT } from '@/lib/limits'
 
 // 允許緩存，但設置較短的 revalidate 時間（30秒）
 export const revalidate = 30;
@@ -19,7 +20,7 @@ export async function GET() {
       .select('*, shuttlecock_types(brand, name)')
       .eq('group_id', groupId)
       .order('created_at', { ascending: false })
-      .limit(100)
+      .limit(PICKUP_HISTORY_LIMIT)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
