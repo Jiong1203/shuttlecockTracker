@@ -31,20 +31,6 @@ async function callLineApi(endpoint: string, body: unknown): Promise<void> {
   }
 }
 
-interface PushParams {
-  to: string // 綁定的 LINE userId
-  text: string | string[] // 單則或多則（LINE 一次 push 最多 5 則）
-}
-
-// 主動推播純文字（消耗官方帳號的推播額度）
-export async function pushLineMessage({ to, text }: PushParams): Promise<void> {
-  const texts = Array.isArray(text) ? text : [text]
-  await callLineApi(PUSH_ENDPOINT, {
-    to,
-    messages: texts.map((t) => ({ type: 'text', text: t })),
-  })
-}
-
 // 主動推播任意 LINE 訊息物件（例如 Flex）
 export async function pushLineMessages({ to, messages }: { to: string; messages: unknown[] }): Promise<void> {
   await callLineApi(PUSH_ENDPOINT, { to, messages })
@@ -70,8 +56,8 @@ interface LowStockItem {
   threshold: number
 }
 
-// 組低庫存通知的純文字內容（LINE 不支援 HTML，故用 emoji + 換行）
-export function buildLowStockLineText(groupName: string, items: LowStockItem[]): string {
+// 組低庫存的純文字內容（LINE 不支援 HTML），供 Flex 訊息的本文使用
+function buildLowStockLineText(groupName: string, items: LowStockItem[]): string {
   const lines = items.map((it) => {
     const stockLabel = it.currentStock <= 0 ? '缺貨中' : `${it.currentStock} 桶`
     return `・${it.brand} ${it.name}：${stockLabel}（門檻 ${it.threshold} 桶）`

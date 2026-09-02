@@ -4,12 +4,6 @@ import { InventoryDisplay } from "@/components/inventory-display"
 import { InventoryStats } from "@/components/inventory-stats"
 import { ClientWrapper } from "./client-wrapper"
 
-type GroupSummary = {
-  id: string
-  name: string
-  contact_email: string | null
-}
-
 async function getInventoryData() {
   const supabase = await createClient()
 
@@ -21,7 +15,7 @@ async function getInventoryData() {
   // 取得 profile + group（合併為一次查詢）
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('group_id, groups(id, name, contact_email)')
+    .select('group_id')
     .eq('id', userId)
     .single()
 
@@ -58,16 +52,12 @@ async function getInventoryData() {
   const inventory = inventoryResult.data || []
   const records = pickupResult.data || []
   const monthlyRows = (monthlyPickupResult.data || []) as { quantity: number | null }[]
-  const groups = profile.groups as GroupSummary | GroupSummary[] | null
-  const group = Array.isArray(groups) ? groups[0] : groups
-
   const monthlyPickupQty = monthlyRows.reduce((acc, r) => acc + (r.quantity || 0), 0)
   const monthlyPickupCount = monthlyRows.length
 
   return {
     inventory: Array.isArray(inventory) ? inventory : [inventory],
     records,
-    group,
     monthlyPickupQty,
     monthlyPickupCount,
   }
@@ -81,7 +71,7 @@ type InventoryStatRow = {
 }
 
 export default async function Home() {
-  const { inventory, records, group, monthlyPickupQty, monthlyPickupCount } = await getInventoryData()
+  const { inventory, records, monthlyPickupQty, monthlyPickupCount } = await getInventoryData()
 
   const totalCurrentStock = inventory.reduce((acc, item) => acc + (item.current_stock || 0), 0)
 
@@ -110,8 +100,6 @@ export default async function Home() {
           )}
 
           <ClientWrapper
-            variant="content"
-            groupName={group?.name || ""}
             inventory={inventory}
             records={records}
             totalCurrentStock={totalCurrentStock}
