@@ -31,6 +31,22 @@ interface ShuttlecockType {
   is_active: boolean
 }
 
+function todayLocalISO() {
+  const d = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+// 把使用者選的日期（本地時區）組成 timestamptz，並保留當下時分秒。
+// 先進先出 的批次歸屬依賴 created_at 排序，同一天多筆入庫若都落在 00:00 會失去先後順序。
+function restockDateToISO(dateStr: string) {
+  const now = new Date()
+  const d = new Date(`${dateStr}T00:00:00`)
+  if (Number.isNaN(d.getTime())) return undefined
+  d.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds())
+  return d.toISOString()
+}
+
 export const RestockForm = forwardRef<RestockFormRef, RestockFormProps>(function RestockForm({ onSuccess, shouldHighlight = false }, ref) {
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState<1 | 2 | 3>(1) // 1: 密碼, 2: 數量/球種/價格, 3: 二次確認
@@ -40,6 +56,7 @@ export const RestockForm = forwardRef<RestockFormRef, RestockFormProps>(function
   const [password, setPassword] = useState("")
   const [amount, setAmount] = useState("10")
   const [unitPrice, setUnitPrice] = useState("")
+  const [restockDate, setRestockDate] = useState(todayLocalISO())
   const [types, setTypes] = useState<ShuttlecockType[]>([])
   const [selectedTypeId, setSelectedTypeId] = useState<string>("")
   const [error, setError] = useState<string | null>(null)
@@ -153,7 +170,8 @@ export const RestockForm = forwardRef<RestockFormRef, RestockFormProps>(function
           password,
           amount: parseInt(amount, 10),
           type_id: selectedTypeId,
-          unit_price: unitPrice ? parseInt(unitPrice, 10) : 0
+          unit_price: unitPrice ? parseInt(unitPrice, 10) : 0,
+          restock_date: restockDateToISO(restockDate)
         }),
       })
 
@@ -191,6 +209,7 @@ export const RestockForm = forwardRef<RestockFormRef, RestockFormProps>(function
     }
     setAmount("10")
     setUnitPrice("")
+    setRestockDate(todayLocalISO())
     setError(null)
   }
 
@@ -276,6 +295,21 @@ export const RestockForm = forwardRef<RestockFormRef, RestockFormProps>(function
                      <ShuttlecockTypeManager onTypeAdded={fetchTypes} />
                 </div>
 
+              <div className="grid gap-2">
+                <Label htmlFor="restock-date">進貨日期</Label>
+                <Input
+                  id="restock-date"
+                  type="date"
+                  value={restockDate}
+                  onChange={(e) => setRestockDate(e.target.value)}
+                  required
+                  className="h-12"
+                />
+                <p className="text-xs text-muted-foreground">
+                  補登過去的入庫請改成實際進貨日，否則開團紀錄的 先進先出 試算會算不到這批球。
+                </p>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor="amount">進貨數量 (桶)</Label>
@@ -324,6 +358,12 @@ export const RestockForm = forwardRef<RestockFormRef, RestockFormProps>(function
                <div className="mb-4">
                  <p className="text-muted-foreground text-sm">球種</p>
                  <p className="text-lg font-bold">{types.find(t => t.id === selectedTypeId)?.brand} {types.find(t => t.id === selectedTypeId)?.name}</p>
+               </div>
+               <div className="mb-4">
+                 <p className="text-muted-foreground text-sm">進貨日期</p>
+                 <p className={`text-lg font-bold ${restockDate !== todayLocalISO() ? 'text-orange-600' : ''}`}>
+                   {restockDate}{restockDate !== todayLocalISO() && '（補登）'}
+                 </p>
                </div>
                <div className="grid grid-cols-2 gap-4 border-t border-border/50 pt-4">
                    <div>

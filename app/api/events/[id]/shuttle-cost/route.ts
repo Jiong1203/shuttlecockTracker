@@ -4,6 +4,21 @@ import { getGroupId } from '@/lib/supabase/helpers'
 
 export const dynamic = 'force-dynamic'
 
+const PIECES_PER_TUBE = 12    // 1 桶 = 12 顆，與 event-detail-dialog.tsx 的 FifoCalculator 一致
+const TAIPEI_OFFSET = '+08:00'
+
+// 「活動日（含當天）」的嚴格上界＝活動日台北時間隔天 00:00。
+// 不可用 `${event_date}T23:59:59+00:00`：UTC 午夜不是台北午夜，該界線實際落在
+// 台北隔天 07:59，會把隔天凌晨的領用誤算成活動前就已用掉。
+function taipeiDayAfter(eventDate: string) {
+  const d = new Date(`${eventDate}T00:00:00${TAIPEI_OFFSET}`)
+  d.setUTCDate(d.getUTCDate() + 1)
+  return d.toISOString()
+}
+
+const fmtTubes = (n: number) => String(Math.round(n * 100) / 100)
+const toPieces = (tubes: number) => Math.round(tubes * PIECES_PER_TUBE)
+
 // POST /api/events/[id]/shuttle-cost
 // 先進先出 試算：以活動日為基準，計算指定球種與顆數的用球成本
 export async function POST(
@@ -30,27 +45,32 @@ export async function POST(
   if (!shuttlecockTypeId) return NextResponse.json({ error: '請選擇球種' }, { status: 400 })
   if (!quantity || quantity <= 0) return NextResponse.json({ error: '顆數需大於 0' }, { status: 400 })
 
+  const cutoff = taipeiDayAfter(event.event_date)
+
   // 取得活動日（含當天）前所有入庫批次，升冪排列以 先進先出 消耗
-  const { data: restocks, error: restockError } = await supabase
+  const { data: restockRows, error: restockError } = await supabase
     .from('restock_records')
     .select('quantity, unit_price')
     .eq('group_id', groupId)
     .eq('shuttlecock_type_id', shuttlecockTypeId)
-    .lte('created_at', `${event.event_date}T23:59:59+00:00`)
+    .lt('created_at', cutoff)
     .order('created_at', { ascending: true })
 
   if (restockError) return NextResponse.json({ error: restockError.message }, { status: 500 })
 
   // 取得活動日前（含當天）所有已使用數量（其他 pickup records）
-  const { data: pickups, error: pickupError } = await supabase
+  const { data: pickupRows, error: pickupError } = await supabase
     .from('pickup_records')
     .select('quantity')
     .eq('group_id', groupId)
     .eq('shuttlecock_type_id', shuttlecockTypeId)
-    .lte('created_at', `${event.event_date}T23:59:59+00:00`)
+    .lt('created_at', cutoff)
     .order('created_at', { ascending: true })
 
   if (pickupError) return NextResponse.json({ error: pickupError.message }, { status: 500 })
+
+  const restocks = restockRows ?? []
+  const pickups = pickupRows ?? []
 
   // 先進先出 試算
   const totalUsedBefore = pickups.reduce((sum, p) => sum + p.quantity, 0)
@@ -72,7 +92,22 @@ export async function POST(
   }
 
   if (toCalc > 0) {
-    return NextResponse.json({ error: '庫存不足，無法完成 先進先出 試算' }, { status: 400 })
+    // 這裡算的是「活動日當下」的歷史庫存，不是首頁的現在庫存。
+    // 最常見的落差來源是入庫紀錄的進貨日期晚於活動日，訊息要講清楚以免重複踩雷。
+    const totalRestocked = restocks.reduce((sum, r) => sum + r.quantity, 0)
+    const available = Math.max(0, totalRestocked - totalUsedBefore)
+    return NextResponse.json(
+      {
+        error:
+          `活動日（${event.event_date}）當下可用庫存僅 ${fmtTubes(available)} 桶（約 ${toPieces(available)} 顆），` +
+          `本次需 ${fmtTubes(quantity)} 桶（${toPieces(quantity)} 顆），尚缺 ${fmtTubes(toCalc)} 桶。` +
+          `若這批球是活動結束後才登記入庫，請到入庫登記修正進貨日期後再試算。`,
+        available,
+        required: quantity,
+        shortage: toCalc,
+      },
+      { status: 400 }
+    )
   }
 
   return NextResponse.json({ cost: Math.round(cost * 100) / 100 })

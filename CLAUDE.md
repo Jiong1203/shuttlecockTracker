@@ -127,9 +127,16 @@ docs/
 - POST `/api/pickup` uses `supabase.rpc('insert_pickup_record', ...)` to prevent TOCTOU race conditions
 - The DB function uses `SELECT ... FOR UPDATE` to lock the shuttlecock_type row
 
+### Backdated Dates & FIFO Ordering (`created_at`)
+- **Both restock and pickup accept a user-supplied date**; there is no separate business-date column — the date is written straight into `created_at`. Pickup: `pickup_date` → RPC param `p_pickup_date`. Restock: `restock_date` → the insert's `created_at` (`app/api/inventory/restock/route.ts`).
+- **Every FIFO path orders and filters on `created_at`** — `/api/settlement/calculate`, `/api/events/[id]/shuttle-cost`, `/api/inventory/history`. A backdated record therefore changes *batch attribution*, not just display. Do not add a separate date column without migrating all three call sites together.
+- **Restock keeps the current wall-clock time** (`restockDateToISO()` in `components/restock-form.tsx` sets H:M:S from `now`), so several restocks logged on the same day retain their order. Pickup does not need this — pickups only accumulate into a total, order is irrelevant. Never "normalize" restock timestamps to 00:00; it collapses same-day batches with different `unit_price` into an arbitrary order.
+- **These endpoints compute point-in-time stock, not current stock.** `/api/events/[id]/shuttle-cost` answers "what was on hand *on the event date*", which is deliberately unrelated to the home page's `inventory_summary.current_stock`. The usual cause of a spurious 「庫存不足」 is a restock whose date is *after* the event date (e.g. logged only after the session). The 400 response spells this out and returns `available` / `required` / `shortage`.
+- **Taipei day boundary**: an event/period date is a Taipei calendar day, so every bound must be built at `+08:00` — `new Date('YYYY-MM-DD')` parses at UTC 00:00 (= Taipei 08:00) and shifts the window 8 hours late at both ends. Both routes now do this: `taipeiDayAfter()` in `/api/events/[id]/shuttle-cost`, `taipeiDayBoundary(date, dayOffset)` in `/api/settlement/calculate` (offset 0 = start bound, offset 1 = end bound paired with strict `<`). Never compare a raw `new Date(dateStr)` against `created_at`.
+
 ### Settlement FIFO Calculation (`/api/settlement/calculate`)
 - **Replays ALL pickups from the beginning**, not just those in the queried period. This is required to know *which restock batch* each pickup consumed; only pickups inside the period accumulate into the returned cost. Do not "optimize" by filtering pickups before the FIFO replay — it breaks batch attribution.
-- **End-date boundary gotcha** (the v1.4 bug): `end_date` is parsed at UTC 00:00, so a naive `<= end_date` excludes that whole day. The fix is `created_at < (end_date + 1 day)` — strict less-than against the next day. Preserve this when touching date filters.
+- **End-date boundary gotcha** (the v1.4 bug): a naive `<= end_date` excludes that whole day; the fix is strict less-than against the next day. The v1.4 fix got the *shape* right but stayed on UTC, leaving an 8-hour skew that was corrected later — both bounds now go through `taipeiDayBoundary()`. Preserve both the strict-`<` shape and the `+08:00` construction when touching date filters.
 - Computed entirely in the route (TypeScript), not in SQL.
 
 ### Toast Notifications
