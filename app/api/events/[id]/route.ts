@@ -33,7 +33,7 @@ export async function GET(
       id, event_date, venue_name, court_count, hours, hourly_rate,
       shuttle_cost_mode, shuttle_cost, shuttle_count, is_settled, notes, created_at,
       clubs!inner ( group_id ),
-      event_attendees ( id, display_name, fee, paid, is_free, created_at )
+      event_attendees ( id, display_name, fee, paid, is_free, member_id, created_at )
     `)
     .eq('id', id)
     .eq('clubs.group_id', groupId)

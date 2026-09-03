@@ -17,10 +17,16 @@ Core features: inventory tracking, pickup registration, FIFO cost settlement, gr
 ## Commands
 
 ```bash
-npm run dev     # Start dev server
-npm run build   # Production build
-npm run lint    # ESLint
+npm run dev        # Start dev server
+npm run build      # Production build
+npm run lint       # ESLint
+npm test           # Vitest（單次執行）
+npm run test:watch # Vitest（監看模式）
 ```
+
+**測試涵蓋範圍**：`lib/` 下的純函式，共 65 項。集中在最容易算錯又難以肉眼檢查的地方——
+FIFO 的台北時區日界、活動財務的應收／實收區分、LINE 訊息解析。
+UI 與 API route 目前無測試。
 
 ## Commit Message Convention
 
@@ -85,6 +91,15 @@ lib/
     helpers.ts   # Shared getGroupId() utility
   crypto.ts      # PBKDF2 PIN hashing (Web Crypto API, no extra packages)
   email.ts       # Nodemailer + Gmail SMTP sender + low-stock email template
+  line.ts        # LINE Messaging API push/reply + 訊息組版
+  line-parser.ts # LINE 報名訊息解析（純函式，有測試）
+  date-boundary.ts # 台北時區日界換算 — FIFO 與結算共用（有測試）
+  event-finance.ts # 活動財務：應收／實收／未收與兩種利潤基準（有測試）
+  event-stats.ts   # 活動彙總統計與月份分桶
+  payment-reminder.ts # 催繳訊息草稿（有測試）
+  csv.ts         # CSV 匯出，帶 BOM 供 Excel 開啟（有測試）
+  format.ts      # 金額與損益顯示格式（台股慣例：正紅負綠）
+  limits.ts      # 列表回傳上限，前後端共用
   utils.ts       # cn() Tailwind merge
 middleware.ts    # Auth guard — protects / and /clubs/* routes
 supabase/
@@ -163,6 +178,7 @@ supabase db push                        # push to linked project
 | `20260401071611_add_club_event_tables.sql` | clubs, badminton_events, event_attendees tables + RLS + indexes |
 | `20260408000000_add_pickup_date_param.sql` | Adds `p_pickup_date` param to `insert_pickup_record` RPC (allows backdating a pickup; defaults to `NOW()`) |
 | `20260721000000_add_low_stock_threshold.sql` | Adds `low_stock_threshold` (default 5) to `shuttlecock_types`, exposes it in `inventory_summary` view, adds `low_stock_alerts` dedup table (for low-stock email module) |
+| `20260903000000_add_club_members_and_pin_lockout.sql` | 新增 `club_members`（球隊名冊）+ `event_attendees.member_id`（nullable）；`clubs` 加 `failed_pin_attempts`／`pin_locked_until`（PIN 連錯鎖定） |
 | `20260722000000_add_line_notification.sql` | Adds LINE binding columns to `groups` (`line_enabled`, `line_user_id`, `line_verify_code`, `line_verify_expires_at`) + partial index on verify code; adds per-channel dedup columns (`email_notified_at`, `line_notified_at`) to `low_stock_alerts` and backfills `email_notified_at` from legacy `notified_at` |
 
 ### Legacy applied migrations (pre-CLI, via SQL Editor)
@@ -181,11 +197,29 @@ supabase db push                        # push to linked project
 - One group can have multiple clubs (球隊); each club is PIN-protected
 - PIN uses the same PBKDF2 hashing as restock PIN (`lib/crypto.ts`)
 - PIN verification state stored in `sessionStorage` (`club_verified_<id>`) — cleared on tab close
+- **PIN 不是資料隔離**：`/api/events/*` 只驗證 group 層級的登入身分，不檢查 PIN。同一 group 帳號
+  登入後可直接呼叫 API 讀取其他 club 的資料。這是刻意的取捨（見 PRD「PIN 是 UI gate」），
+  前提是**共用同一 group 帳號的球隊彼此信任**；已寫入 `docs/user-manual.md` 告知使用者。
+  若要真隔離需走 PRD Phase 2（獨立帳號 + RLS），見 `docs/IMPROVEMENT-LOG.md` 的 B1。
 
 ### Data model
 ```
 groups → clubs → badminton_events → event_attendees
+              └→ club_members ←──────────┘ (event_attendees.member_id, nullable)
 ```
+
+### 球隊名冊（club_members）
+- 常來的隊員建檔一次，之後建立活動可直接點選；`display_name` 在同一 club 內唯一。
+- `event_attendees.member_id` 是 **nullable** 的選填關聯：臨時來的客人仍可直接打字，不必先建檔。
+  刪除成員時 `ON DELETE SET NULL`，歷史出席紀錄保留姓名文字，不影響已結算的帳目。
+- LINE 訊息解析後會**自動比對名冊**（以 `display_name` 完全相符），對得上的套用該成員的
+  `default_fee` 與 `is_free` 並記下 `member_id`。
+- 停用（`is_active=false`）而非刪除，是為了保留歷史關聯又不干擾勾選清單。
+
+### PIN 連錯鎖定
+- `POST /api/clubs/[id]/verify-pin` 連錯 5 次鎖定 15 分鐘（`clubs.failed_pin_attempts` /
+  `pin_locked_until`），驗證成功即清零。鎖定中直接回 429，**不比對 PIN 也不累加次數**。
+- 鎖定期已過的失敗算重新起算的第一次，不會延續舊的計數。
 
 ### Key behaviors
 - **Attendee order**: preserved from LINE message → sequential `for...of` insert → API sorts by `created_at ASC`
@@ -197,7 +231,8 @@ groups → clubs → badminton_events → event_attendees
 ### LINE message parser (frontend only)
 - Regex extracts player names, fees from LINE group messages
 - Handles formats: `1. Name $fee`, `免費` keyword → `isFree=true`
-- Located in `app/clubs/[id]/page.tsx` (inline in CreateEventDialog)
+- `lib/line-parser.ts` — 純函式、零依賴，測試在 `lib/line-parser.test.ts`（PRD 4.3 的格式對照表即測試案例）
+- **行內的「候補 0」不可誤判為區段標題**（如 `報名 16/16｜候補 0`），否則會把整份名單截掉；已有測試守住
 
 ### FIFO calculator
 - Located in `components/event-detail-dialog.tsx` (FifoCalculator component)

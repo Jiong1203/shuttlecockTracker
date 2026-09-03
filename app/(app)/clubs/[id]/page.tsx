@@ -9,9 +9,10 @@ import { computeEventStats, groupByMonth } from "@/lib/event-stats"
 import { EventTrendChart } from "@/components/event-trend-chart"
 import { CreateEventDialog } from "@/components/create-event-dialog"
 import { ClubPinGate } from "@/components/club-pin-gate"
+import { ClubMembersDialog } from "@/components/club-members-dialog"
 import { fmtMoney, profitLabel, profitClass as baseProfitClass } from "@/lib/format"
 import {
-  Plus, Loader2, CalendarDays,
+  Plus, Loader2, CalendarDays, Users,
   BadgeCheck, Trash2, ClipboardList, ChevronDown, X, Wallet, Info,
 } from "lucide-react"
 
@@ -48,6 +49,7 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
   const [events, setEvents] = useState<BadmintonEvent[]>([])
   const [loadingEvents, setLoadingEvents] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
+  const [membersOpen, setMembersOpen] = useState(false)
   const [detailEventId, setDetailEventId] = useState<string | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -187,9 +189,14 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
               共 {stats.count} 場 · {stats.settledCount} 場已結算
             </p>
           </div>
-          <Button onClick={() => setCreateOpen(true)} className="gap-2 shrink-0">
-            <Plus className="w-4 h-4" /> 新增活動
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button variant="outline" onClick={() => setMembersOpen(true)} className="gap-2">
+              <Users className="w-4 h-4" /> 球隊名冊
+            </Button>
+            <Button onClick={() => setCreateOpen(true)} className="gap-2">
+              <Plus className="w-4 h-4" /> 新增活動
+            </Button>
+          </div>
         </div>
 
         {/* 結算規則說明 — 可折疊，避免佔用版面 */}
@@ -473,6 +480,9 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
       <CreateEventDialog
         clubId={clubId} open={createOpen}
         onOpenChange={setCreateOpen} onCreated={fetchEvents}
+      />
+      <ClubMembersDialog
+        clubId={clubId} open={membersOpen} onOpenChange={setMembersOpen}
       />
       {detailEventId && (
         <EventDetailDialog

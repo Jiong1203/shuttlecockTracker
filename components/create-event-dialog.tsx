@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -9,9 +9,10 @@ import {
 } from "@/components/ui/dialog"
 import { showToast } from "@/components/ui/toast"
 import { parseLineMessage } from "@/lib/line-parser"
-import { CalendarDays, ClipboardList, Loader2, Plus, Sparkles } from "lucide-react"
+import { CalendarDays, ClipboardList, Loader2, Plus, Sparkles, Users } from "lucide-react"
+import type { ClubMember } from "@/components/club-members-dialog"
 
-interface ParsedName { name: string; included: boolean; fee: number; isFree: boolean }
+interface ParsedName { name: string; included: boolean; fee: number; isFree: boolean; memberId?: string | null }
 
 
 export function CreateEventDialog({
@@ -32,6 +33,17 @@ export function CreateEventDialog({
   const [manualName, setManualName] = useState('')
   const [manualFee, setManualFee] = useState('')
   const [loading, setLoading] = useState(false)
+  const [members, setMembers] = useState<ClubMember[]>([])
+
+  const fetchMembers = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/clubs/${clubId}/members`)
+      const data = await res.json()
+      if (res.ok) setMembers(data)
+    } catch { /* 名冊載入失敗不影響手動輸入 */ }
+  }, [clubId])
+
+  useEffect(() => { if (open) fetchMembers() }, [open, fetchMembers])
 
   const reset = () => {
     setEventDate(today); setVenueName(''); setCourtCount('2'); setHours('2')
@@ -50,8 +62,21 @@ export function CreateEventDialog({
     // 優先採用訊息解析到的費用，否則沿用使用者輸入的預設費用
     const fee = result.fee ?? (parseFloat(defaultFee) || 0)
     if (result.fee != null) setDefaultFee(String(result.fee))
-    setParsedNames(result.names.map(name => ({ name, included: true, fee, isFree: false })))
-    showToast(`已解析 ${result.names.length} 位出席者`, 'success')
+    // 與名冊比對：對得上的沿用該成員的預設費用與免費設定，並記下關聯
+    let matched = 0
+    setParsedNames(result.names.map(name => {
+      const m = members.find(x => x.display_name === name.trim())
+      if (m) matched++
+      return m
+        ? { name, included: true, fee: m.is_free ? 0 : Number(m.default_fee), isFree: m.is_free, memberId: m.id }
+        : { name, included: true, fee, isFree: false, memberId: null }
+    }))
+    showToast(
+      matched > 0
+        ? `已解析 ${result.names.length} 位，其中 ${matched} 位對應到名冊`
+        : `已解析 ${result.names.length} 位出席者`,
+      'success'
+    )
   }
 
   const applyDefaultFee = () => {
@@ -66,6 +91,26 @@ export function CreateEventDialog({
     setParsedNames(prev => [...prev, ...names.map(name => ({ name, included: true, fee, isFree: false }))])
     setManualText('')
     showToast(`已新增 ${names.length} 位出席者`, 'success')
+  }
+
+  // 從名冊勾選加入，已在名單中的人不重複加
+  const addFromRoster = (m: ClubMember) => {
+    setParsedNames(prev => {
+      if (prev.some(p => p.memberId === m.id || p.name === m.display_name)) return prev
+      return [...prev, {
+        name: m.display_name,
+        included: true,
+        fee: m.is_free ? 0 : Number(m.default_fee),
+        isFree: m.is_free,
+        memberId: m.id,
+      }]
+    })
+  }
+
+  const addAllFromRoster = () => {
+    if (members.length === 0) return
+    members.forEach(addFromRoster)
+    showToast(`已從名冊加入 ${members.length} 位`, 'success')
   }
 
   const handleManualSingleAdd = () => {
@@ -110,7 +155,7 @@ export function CreateEventDialog({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            attendees: toAdd.map(p => ({ displayName: p.name, fee: p.fee, isFree: p.isFree, paid: false })),
+            attendees: toAdd.map(p => ({ displayName: p.name, fee: p.fee, isFree: p.isFree, paid: false, memberId: p.memberId ?? null })),
           }),
         })
         if (!attRes.ok) {
@@ -156,6 +201,46 @@ export function CreateEventDialog({
                 <ClipboardList className="w-3 h-3" /> 手動輸入
               </button>
             </div>
+
+            {/* 名冊快選：常來的隊員直接點，不必重打 */}
+            {members.length > 0 && (
+              <div className="rounded-lg border bg-muted/30 p-2.5 space-y-2">
+                <div className="flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                  <span className="text-xs font-semibold">球隊名冊</span>
+                  <span className="text-[11px] text-muted-foreground">點選加入</span>
+                  <button
+                    onClick={addAllFromRoster}
+                    className="ml-auto text-[11px] text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    全部加入
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {members.map(m => {
+                    const added = parsedNames.some(p => p.memberId === m.id || p.name === m.display_name)
+                    return (
+                      <button
+                        key={m.id}
+                        onClick={() => addFromRoster(m)}
+                        disabled={added}
+                        className={`px-2 py-1 rounded-md border text-xs transition-colors ${
+                          added
+                            ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700 cursor-default'
+                            : 'bg-background border-input hover:bg-muted'
+                        }`}
+                      >
+                        {added && '✓ '}{m.display_name}
+                        {!m.is_free && Number(m.default_fee) > 0 && (
+                          <span className="ml-1 opacity-60">${Number(m.default_fee)}</span>
+                        )}
+                        {m.is_free && <span className="ml-1 opacity-60">免費</span>}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
 
             {inputMode === 'line' ? (
               <div className="space-y-2">

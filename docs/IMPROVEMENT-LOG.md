@@ -16,12 +16,12 @@
 | 二 | D1 FIFO 與 parser 測試 | ✅ | `feat/audit-wave-2` |
 | 二 | D2 錯誤頁與 404 頁 | ✅ | `feat/audit-wave-2` |
 | 二 | C3 紀錄截斷提示 | ✅ | `feat/audit-wave-2` |
-| 三 | E1 球員名冊 | ⏸ | 需 DB migration |
+| 三 | E1 球員名冊 | ✅ | `feat/audit-wave-5` |
 | 三 | E4 催繳訊息草稿 | ✅ | `feat/audit-wave-3` |
 | 三 | E2 CSV 匯出 | ✅ | `feat/audit-wave-3` |
 | 三 | E3 搜尋與篩選 | ✅ | `feat/audit-wave-3` |
-| 四 | B1 球隊資料隔離 | ⏸ | 需產品決策 |
-| 四 | B2 PIN 嘗試次數限制 | ⏸ | 需 DB migration |
+| 四 | B1 球隊資料隔離 | ✅ | 已裁決：維持現狀並寫入說明 |
+| 四 | B2 PIN 嘗試次數限制 | ✅ | `feat/audit-wave-5` |
 | 四 | B3 middleware 路徑一致性 | ✅ | `feat/audit-wave-4a` |
 | 四 | A2 inventory_summary 加 group 過濾 | ⏸ | 需 DB migration |
 | 四 | C2 group_id 進 JWT claim | ⏸ | 需 Supabase Auth Hook |
@@ -44,15 +44,15 @@
 
 | 項目 | 需要的變更 | 風險 |
 |------|-----------|------|
-| E1 球員名冊 | 新增 `club_members` 表；`event_attendees` 加 nullable 的 `member_id` | 低。純新增，不動既有欄位與資料 |
-| B2 PIN 嘗試次數限制 | `clubs` 加 `failed_attempts`、`locked_until` 兩欄 | 低。純新增且有預設值 |
+| ~~E1 球員名冊~~ | ~~新增 `club_members` 表~~ | ✅ 已完成 |
+| ~~B2 PIN 嘗試次數限制~~ | ~~`clubs` 加兩欄~~ | ✅ 已完成 |
 | A2 庫存彙總加 group 過濾 | 重建 `inventory_summary` view | **中**。view 被首頁、低庫存 cron、庫存管理共用，語意須完全等價 |
 
 ### 二、需要產品方向的裁決
 
 | 項目 | 要決定的事 |
 |------|-----------|
-| B1 球隊資料隔離 | 各球隊的收費資料目前在 API 層沒有互相隔離（PIN 只是畫面上的門）。要補簽章 token，還是維持現狀並在說明中寫清楚？答案取決於各隊之間是否互相信任 |
+| ~~B1 球隊資料隔離~~ | ✅ 已裁決：維持現狀，改以文件明確告知保護範圍 |
 | E5 多帳號與角色權限 | 是否會開放給第二個球館使用？若會，與 B1 是同一個工程，且應在開放前先做，因為它決定資料模型 |
 
 ### 三、需要在 Supabase 主控台操作
@@ -86,6 +86,43 @@
 ## 變更紀錄
 
 <!-- 每完成一項，於此區塊由新到舊追加一節 -->
+
+### 2026-09-03 · 球員名冊、PIN 鎖定與 B1 裁決
+
+#### E1 — 球隊名冊
+
+**Migration**：`20260903000000_add_club_members_and_pin_lockout.sql`（純新增，不動既有資料）
+
+- `club_members`：club_id、display_name、default_fee、is_free、is_active、note。
+  同一 club 內 display_name 唯一，否則名冊失去辨識作用。
+- `event_attendees.member_id`：**nullable** 選填關聯，`ON DELETE SET NULL`。
+  臨時客人仍可直接打字；刪除成員時歷史出席紀錄保留姓名，不影響已結算帳目。
+- RLS 透過 club → group 隔離，寫法與 `badminton_events` 一致。
+
+**API**：`/api/clubs/[id]/members`（GET 列表、POST 單筆或批次）與
+`/api/clubs/[id]/members/[mid]`（PATCH、DELETE）。同名時回 409。
+
+**介面**：
+- 球隊頁右上新增「球隊名冊」，開啟管理對話框（新增、改預設費用、切換免費、停用、刪除）
+- 建立活動時名冊成員顯示為可點選標籤，點一下加入並帶入費用；支援「全部加入」
+- **LINE 訊息解析後自動比對名冊**：對得上的套用其預設費用與免費設定並記下關聯，
+  解析結果會顯示「其中 N 位對應到名冊」
+
+#### B2 — PIN 連錯鎖定
+
+`clubs` 新增 `failed_pin_attempts`、`pin_locked_until`。連錯 5 次鎖 15 分鐘，
+驗證成功即清零。鎖定中直接回 429，不比對 PIN 也不累加次數；鎖定期已過的失敗算重新起算。
+失敗回應會告知剩餘次數。
+
+#### B1 — 裁決：維持現狀，寫入說明
+
+各球隊的收費資料在 API 層確實沒有互相隔離（PIN 只是畫面上的門）。經裁決維持現行架構，
+改以文件明確告知，避免 PIN 給人錯誤的安全感：
+
+- `docs/user-manual.md`：新增「關於 PIN 碼的保護範圍」警示框，說明 PIN 是操作區隔而非
+  資料層級隔離，並要求「只有互相信任的球隊共用同一個球團帳號」。
+  同時修正系統簡介中「每個球隊的資料完全獨立」這句過度承諾的描述。
+- `CLAUDE.md`：記錄此為刻意取捨及其前提，並指向 Phase 2 的升級路徑。
 
 ### 2026-09-03 · 第四梯（不需資料庫變更的部分）
 
