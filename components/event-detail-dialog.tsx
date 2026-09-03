@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { showToast } from "@/components/ui/toast"
 import { buildPaymentReminderText } from "@/lib/payment-reminder"
 import { downloadCsv } from "@/lib/csv"
+import { fmtMoney, profitClass, profitLabel } from "@/lib/format"
 import {
   Loader2, Plus, Trash2, BadgeCheck, Lock, Sparkles, RotateCcw,
 } from "lucide-react"
@@ -56,12 +57,7 @@ interface ShuttleType {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const fmtMoney = (n: number) => `$${Math.abs(n).toLocaleString()}`
-const profitClass = (p: number) =>
-  p > 0 ? 'text-red-500 dark:text-red-400' :
-  p < 0 ? 'text-green-600 dark:text-green-500' :
-  'text-muted-foreground'
-const profitLabel = (p: number) => `${p >= 0 ? '+' : '-'}${fmtMoney(p)}`
+
 
 // ─── ProfitCard ───────────────────────────────────────────────────────────────
 
