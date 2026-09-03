@@ -337,7 +337,7 @@ function CreateEventDialog({
         <DialogFooter className="pt-3 border-t flex-col gap-2">
           {loading && (
             <p className="text-xs text-muted-foreground text-center w-full">
-              正在建立活動{parsedNames.filter(p => p.included).length > 0 ? `（逐一新增 ${parsedNames.filter(p => p.included).length} 位出席者）` : ''}，請稍候…
+              正在建立活動{parsedNames.filter(p => p.included).length > 0 ? `（含 ${parsedNames.filter(p => p.included).length} 位出席者）` : ''}，請稍候…
             </p>
           )}
           <div className="flex gap-2 justify-end w-full">
@@ -420,6 +420,7 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
   const [settlingId, setSettlingId] = useState<string | null>(null)
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [settledFilter, setSettledFilter] = useState<'all' | 'unsettled' | 'settled'>('all')
   const [expandedMetric, setExpandedMetric] = useState<string | null>(null)
 
   // Check session verification & fetch club info
@@ -495,8 +496,13 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
   }
 
   // Profit summary
-  // 彙總統計（建立在目前顯示的 events 上，日期篩選會自動跟隨）
-  const stats = computeEventStats(events)
+  // 結算狀態為前端篩選（API 未提供此參數，且資料已載入）；日期篩選則在後端完成
+  const visibleEvents = settledFilter === 'all'
+    ? events
+    : events.filter(e => (settledFilter === 'settled' ? e.is_settled : !e.is_settled))
+
+  // 彙總統計（建立在目前顯示的 events 上，日期與狀態篩選會自動跟隨）
+  const stats = computeEventStats(visibleEvents)
 
   // 彙總卡設定；具 chart 者可點擊展開每月趨勢圖（B2）
   const statCards: {
@@ -573,9 +579,28 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
           <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="h-9 w-auto text-xs" aria-label="開始日期" />
           <span className="text-muted-foreground">~</span>
           <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="h-9 w-auto text-xs" aria-label="結束日期" />
-          {(startDate || endDate) && (
+          <div className="flex items-center rounded-md border border-input overflow-hidden">
+            {([
+              { v: 'all', label: '全部' },
+              { v: 'unsettled', label: '未結算' },
+              { v: 'settled', label: '已結算' },
+            ] as const).map(o => (
+              <button
+                key={o.v}
+                onClick={() => setSettledFilter(o.v)}
+                className={`px-2.5 py-1.5 text-xs transition-colors ${
+                  settledFilter === o.v
+                    ? 'bg-primary text-primary-foreground font-semibold'
+                    : 'text-muted-foreground hover:bg-muted/50'
+                }`}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+          {(startDate || endDate || settledFilter !== 'all') && (
             <button
-              onClick={() => { setStartDate(''); setEndDate('') }}
+              onClick={() => { setStartDate(''); setEndDate(''); setSettledFilter('all') }}
               className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2 py-1.5"
             >
               <X className="w-3 h-3" /> 清除
@@ -584,7 +609,7 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
         </div>
 
         {/* Summary stat strip + 趨勢圖（點擊卡片展開每月趨勢） */}
-        {events.length > 0 && (
+        {visibleEvents.length > 0 && (
           <div className="space-y-3">
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
               {statCards.map(c => {
@@ -624,7 +649,7 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
         )}
 
         {/* 結算摘要 — mobile only；桌機的合計列在手機看不到，這裡補上結算導向的金額總結（含場租） */}
-        {events.length > 0 && (
+        {visibleEvents.length > 0 && (
           <div className="md:hidden rounded-xl border border-blue-400/40 dark:border-blue-500/30 bg-gradient-to-br from-blue-500/10 via-blue-500/[0.04] to-purple-500/10 px-4 py-3.5 shadow-sm">
             <div className="flex items-center gap-2 mb-3">
               <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-500/15 text-blue-600 dark:text-blue-400 shrink-0">
@@ -676,19 +701,21 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
             <div className="flex justify-center items-center py-16">
               <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
             </div>
-          ) : events.length === 0 ? (
+          ) : visibleEvents.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 space-y-3 text-muted-foreground">
               <CalendarDays className="w-12 h-12 opacity-20" />
               <p className="text-sm">
-                {startDate || endDate ? '此區間沒有活動，試試調整或清除日期篩選' : '尚無活動紀錄，點擊「新增活動」開始記錄'}
+                {startDate || endDate || settledFilter !== 'all'
+                  ? '沒有符合篩選條件的活動，試試調整或清除篩選'
+                  : '尚無活動紀錄，點擊「新增活動」開始記錄'}
               </p>
             </div>
           ) : (
-            events.map((ev, i) => (
+            visibleEvents.map((ev, i) => (
               <div
                 key={ev.id}
                 onClick={() => { setDetailEventId(ev.id); setDetailOpen(true) }}
-                className={`px-5 hover:bg-muted/20 cursor-pointer transition-colors group ${i < events.length - 1 ? 'border-b border-border/60' : ''}`}
+                className={`px-5 hover:bg-muted/20 cursor-pointer transition-colors group ${i < visibleEvents.length - 1 ? 'border-b border-border/60' : ''}`}
               >
                 {/* Mobile layout */}
                 <div className="flex items-center gap-3 py-3.5 md:hidden">
@@ -779,7 +806,7 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
           )}
 
           {/* 合計列 — desktop only，對齊表頭欄位 */}
-          {events.length > 0 && (
+          {visibleEvents.length > 0 && (
             <div className="hidden md:grid grid-cols-[120px_1fr_90px_72px_90px_90px_100px_80px_120px] gap-3 px-5 py-3.5 border-t-2 border-border bg-muted/40 items-center text-sm font-bold">
               <div>合計</div>
               <div></div>
@@ -801,7 +828,7 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
           )}
         </div>
 
-        {events.length > 0 && (
+        {visibleEvents.length > 0 && (
           <p className="text-xs text-muted-foreground text-center">
             點擊任一列可查看活動詳情與出席名單
           </p>
