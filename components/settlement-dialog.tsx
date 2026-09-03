@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
+import { downloadCsv } from "@/lib/csv"
 import {
   Dialog,
   DialogContent,
@@ -149,6 +150,22 @@ export function SettlementDialog({ records, types = [] }: SettlementDialogProps)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<SettlementResult | null>(null)
 
+  // 匯出結算明細，供對帳與交帳使用。逐批次列出，才看得出成本是怎麼算出來的。
+  const handleExportCsv = () => {
+    if (!result) return
+    const rows: unknown[][] = []
+    for (const detail of result.details) {
+      const info = types.find(t => t.shuttlecock_type_id === detail.type_id)
+      const typeName = info ? `${info.brand} ${info.name}` : '未知球種'
+      for (const b of detail.used_batches) {
+        rows.push([typeName, b.quantity, b.price, b.quantity * b.price, ''])
+      }
+      rows.push([typeName, detail.total_quantity, '', detail.total_cost, `均價 ${detail.average_cost.toFixed(2)}`])
+    }
+    rows.push(['總計', '', '', result.grand_total_cost, `${result.period.start || '不限'} 至 ${result.period.end || '不限'}`])
+    downloadCsv('結算明細', ['球種', '數量(桶)', '批次單價', '小計', '備註'], rows)
+  }
+
   const uniquePickers = useMemo(() => {
     return Array.from(new Set(records?.map(r => r.picker_name).filter(Boolean))) as string[]
   }, [records])
@@ -283,7 +300,15 @@ export function SettlementDialog({ records, types = [] }: SettlementDialogProps)
               </div>
 
               <div className="space-y-3">
-                <h4 className="font-bold text-sm text-muted-foreground uppercase tracking-wider">球種消耗明細</h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-sm text-muted-foreground uppercase tracking-wider">球種消耗明細</h4>
+                  <button
+                    onClick={handleExportCsv}
+                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    匯出 CSV
+                  </button>
+                </div>
                 {result.details.map((detail) => {
                   const typeInfo = types.find(t => t.shuttlecock_type_id === detail.type_id)
                   const typeName = typeInfo ? `${typeInfo.brand} ${typeInfo.name}` : '未知球種'

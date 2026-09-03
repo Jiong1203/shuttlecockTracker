@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { showToast } from "@/components/ui/toast"
+import { buildPaymentReminderText } from "@/lib/payment-reminder"
+import { downloadCsv } from "@/lib/csv"
 import {
   Loader2, Plus, Trash2, BadgeCheck, Lock, Sparkles, RotateCcw,
 } from "lucide-react"
@@ -509,6 +511,37 @@ export function EventDetailDialog({ eventId, open, onOpenChange }: EventDetailDi
     fetchEvent()
   }
 
+  // 產生可轉貼的催繳文字並複製到剪貼簿。
+  // 刻意不自動推播——何時催、催誰，由負責人決定。
+  const handleCopyReminder = async () => {
+    if (!event) return
+    const text = buildPaymentReminderText(event.event_attendees, {
+      eventDate: event.event_date,
+      venueName: event.venue_name,
+    })
+    if (!text) { showToast('目前沒有未繳費的夥伴', 'info'); return }
+    try {
+      await navigator.clipboard.writeText(text)
+      showToast('催繳訊息已複製，可直接貼到 LINE 群組', 'success')
+    } catch {
+      showToast('複製失敗，請確認瀏覽器已授權剪貼簿權限', 'error')
+    }
+  }
+
+  // 匯出出席與收費明細，供對帳或轉交隊員查看
+  const handleExportAttendees = () => {
+    if (!event) return
+    if (event.event_attendees.length === 0) { showToast('目前沒有出席名單', 'info'); return }
+    const rows = event.event_attendees.map((a, i) => [
+      i + 1,
+      a.display_name,
+      a.is_free ? 0 : Number(a.fee),
+      a.is_free ? '免費' : a.paid ? '已繳' : '未繳',
+    ])
+    rows.push(['', '合計', event.total_due, `實收 ${event.total_paid} / 未收 ${event.total_unpaid}`])
+    downloadCsv(`出席明細_${event.event_date}`, ['序號', '姓名', '應繳', '狀態'], rows)
+  }
+
   const handleBulkMarkUnpaid = async () => {
     if (!event || selectedIds.size === 0) return
     const targets = event.event_attendees.filter(a => selectedIds.has(a.id) && !a.is_free)
@@ -639,6 +672,8 @@ export function EventDetailDialog({ eventId, open, onOpenChange }: EventDetailDi
                     <button onClick={handleApplyBulkFee} className="text-xs text-blue-600 dark:text-blue-400 hover:underline px-1 py-1.5">套用</button>
                   </div>
                   <button onClick={handleMarkAllPaid} className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline px-1 py-1.5">全部已繳</button>
+                  <button onClick={handleCopyReminder} className="text-xs text-amber-600 dark:text-amber-500 hover:underline px-1 py-1.5">催繳訊息</button>
+                  <button onClick={handleExportAttendees} className="text-xs text-blue-600 dark:text-blue-400 hover:underline px-1 py-1.5">匯出</button>
                 </div>
               </div>
 

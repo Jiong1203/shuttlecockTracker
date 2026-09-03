@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { PICKUP_HISTORY_LIMIT } from "@/lib/limits"
 import {
   Table,
@@ -41,6 +41,25 @@ export function PickupHistory({ records, onDelete }: PickupHistoryProps) {
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [deletingInListId, setDeletingInListId] = useState<string | null>(null)
+  const [query, setQuery] = useState("")
+  const [month, setMonth] = useState("")   // 'YYYY-MM'，空字串為不限
+
+  // 可選月份取自現有資料，避免列出沒有紀錄的月份
+  const months = useMemo(() => {
+    const set = new Set(records.map(r => r.created_at.slice(0, 7)))
+    return [...set].sort().reverse()
+  }, [records])
+
+  // 目前資料量前端過濾即可；待 C3 的分頁完成後再移到後端
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return records.filter(r => {
+      if (month && !r.created_at.startsWith(month)) return false
+      if (!q) return true
+      const type = `${r.shuttlecock_types?.brand ?? ''} ${r.shuttlecock_types?.name ?? ''}`
+      return r.picker_name.toLowerCase().includes(q) || type.toLowerCase().includes(q)
+    })
+  }, [records, query, month])
 
   const handleDelete = async () => {
     if (!deleteId) return
@@ -67,7 +86,26 @@ export function PickupHistory({ records, onDelete }: PickupHistoryProps) {
 
   return (
     <div className="w-full max-w-2xl mx-auto mt-8">
-      <h2 className="text-xl font-bold mb-4 px-2 text-foreground">領取歷史紀錄</h2>
+      <div className="flex flex-wrap items-center gap-2 mb-4 px-2">
+        <h2 className="text-xl font-bold text-foreground mr-auto">領取歷史紀錄</h2>
+        <input
+          type="search"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="搜尋姓名或球種"
+          className="h-9 w-40 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+        <select
+          value={month}
+          onChange={e => setMonth(e.target.value)}
+          className="h-9 rounded-md border border-input bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value="">全部月份</option>
+          {months.map(m => (
+            <option key={m} value={m}>{m.replace('-', ' / ')}</option>
+          ))}
+        </select>
+      </div>
       <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
         <div className="max-h-[400px] overflow-y-auto overflow-x-hidden">
           <Table>
@@ -81,14 +119,14 @@ export function PickupHistory({ records, onDelete }: PickupHistoryProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {records.length === 0 ? (
+            {filtered.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center py-8 text-slate-400">
-                  尚無領取紀錄
+                  {records.length === 0 ? '尚無領取紀錄' : '沒有符合條件的紀錄'}
                 </TableCell>
               </TableRow>
             ) : (
-              records.map((record) => (
+              filtered.map((record) => (
                 <TableRow key={record.id} className="hover:bg-muted/30 transition-colors group">
                   <TableCell className="font-medium text-foreground">{record.picker_name}</TableCell>
                   <TableCell>
@@ -126,7 +164,7 @@ export function PickupHistory({ records, onDelete }: PickupHistoryProps) {
       {/* 後端固定回傳最近 100 筆。不說明的話，使用者會以為更早的紀錄不存在。 */}
       {records.length >= PICKUP_HISTORY_LIMIT && (
         <p className="px-4 py-2.5 text-xs text-muted-foreground text-center border-t">
-          僅顯示最近 {PICKUP_HISTORY_LIMIT} 筆領取紀錄，更早的紀錄仍保存於系統中
+          僅載入最近 {PICKUP_HISTORY_LIMIT} 筆領取紀錄{query || month ? '，搜尋與篩選在此範圍內進行' : ''}；更早的紀錄仍保存於系統中
         </p>
       )}
     </div>
