@@ -30,7 +30,7 @@ export async function GET(
 
   const { data, error } = await supabase
     .from('event_attendees')
-    .select('id, display_name, fee, paid, is_free, created_at')
+    .select('id, display_name, fee, paid, is_free, member_id, created_at')
     .eq('event_id', id)
     .order('created_at', { ascending: true })
 
@@ -57,8 +57,9 @@ export async function POST(
   // 批次是給 LINE 名單解析用的——一次貼上二十人時，逐筆 POST 會打出二十個往返，
   // 且中途失敗會留下半套資料。
   const isBatch = Array.isArray(body.attendees)
-  const rows: { displayName?: string; fee?: number; paid?: boolean; isFree?: boolean }[] =
-    isBatch ? body.attendees : [body]
+  const rows: {
+    displayName?: string; fee?: number; paid?: boolean; isFree?: boolean; memberId?: string | null
+  }[] = isBatch ? body.attendees : [body]
 
   if (rows.length === 0) return NextResponse.json({ error: '沒有可新增的出席者' }, { status: 400 })
 
@@ -80,13 +81,14 @@ export async function POST(
     fee: r.fee ?? 0,
     paid: r.paid ?? false,
     is_free: r.isFree ?? false,
+    member_id: r.memberId ?? null,   // 選填：關聯到球隊名冊，臨時客人維持 null
     created_at: new Date(base + i).toISOString(),
   }))
 
   const { data, error } = await supabase
     .from('event_attendees')
     .insert(payload)
-    .select('id, display_name, fee, paid, is_free, created_at')
+    .select('id, display_name, fee, paid, is_free, member_id, created_at')
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
