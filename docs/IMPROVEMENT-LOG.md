@@ -31,6 +31,58 @@
 
 ---
 
+## 待決策事項
+
+以下項目已停在需要你授權或裁決的地方，**尚未動工**。
+
+### 一、資料庫變更會直接套用到正式環境
+
+`.github/workflows/supabase-migrations.yml` 設定為：push 到 `main` 且 `supabase/migrations/`
+有變動時，**自動對東京正式機執行 `supabase db push`**。
+
+因此下列項目一旦合併就會改動線上資料庫的 schema，需要你明確同意後才進行：
+
+| 項目 | 需要的變更 | 風險 |
+|------|-----------|------|
+| E1 球員名冊 | 新增 `club_members` 表；`event_attendees` 加 nullable 的 `member_id` | 低。純新增，不動既有欄位與資料 |
+| B2 PIN 嘗試次數限制 | `clubs` 加 `failed_attempts`、`locked_until` 兩欄 | 低。純新增且有預設值 |
+| A2 庫存彙總加 group 過濾 | 重建 `inventory_summary` view | **中**。view 被首頁、低庫存 cron、庫存管理共用，語意須完全等價 |
+
+### 二、需要產品方向的裁決
+
+| 項目 | 要決定的事 |
+|------|-----------|
+| B1 球隊資料隔離 | 各球隊的收費資料目前在 API 層沒有互相隔離（PIN 只是畫面上的門）。要補簽章 token，還是維持現狀並在說明中寫清楚？答案取決於各隊之間是否互相信任 |
+| E5 多帳號與角色權限 | 是否會開放給第二個球館使用？若會，與 B1 是同一個工程，且應在開放前先做，因為它決定資料模型 |
+
+### 三、需要在 Supabase 主控台操作
+
+| 項目 | 說明 |
+|------|------|
+| C2 `group_id` 進 JWT claim | 需設定 Supabase Auth Hook（Custom Access Token），無法只靠程式碼完成 |
+
+### 四、建議暫不執行
+
+| 項目 | 理由 |
+|------|------|
+| A3 FIFO 批次快照 | 目前資料量下完全感覺不到。建議先加耗時 log 觀察，等領取紀錄破千筆再評估 |
+| FIFO 演算法抽出與測試 | `settlement/calculate` 與 `shuttle-cost` 是兩套不同實作，抽出共用的重構風險高於已完成的項目，且正是最不該出錯的地方。建議單獨排一次，前後以測試夾住 |
+
+---
+
+## 環境限制（影響驗證強度）
+
+本機為 WSL 存取 `/mnt/d` 的 Windows 檔案系統，`npm install` 會因無法對 node_modules 執行
+`chmod` 而失敗（EPERM）。連帶影響：
+
+- `npm run build` 無法在本機執行（`lightningcss` 原生模組缺失）
+- `vitest` 已寫入 `package.json`，但需在 **Windows 端執行一次 `npm install`** 才會實際安裝；
+  本輪測試以 `npx vitest run` 驗證
+
+因此所有改動的驗證強度為：**型別檢查通過、ESLint 無新增問題、65 項測試通過，但未經實機操作**。
+
+---
+
 ## 變更紀錄
 
 <!-- 每完成一項，於此區塊由新到舊追加一節 -->
