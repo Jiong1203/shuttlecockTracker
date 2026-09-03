@@ -22,18 +22,43 @@
 | 三 | E3 搜尋與篩選 | ✅ | `feat/audit-wave-3` |
 | 四 | B1 球隊資料隔離 | ⏸ | 需產品決策 |
 | 四 | B2 PIN 嘗試次數限制 | ⏸ | 需 DB migration |
-| 四 | B3 middleware 路徑一致性 | ⬜ | — |
+| 四 | B3 middleware 路徑一致性 | ✅ | `feat/audit-wave-4a` |
 | 四 | A2 inventory_summary 加 group 過濾 | ⏸ | 需 DB migration |
 | 四 | C2 group_id 進 JWT claim | ⏸ | 需 Supabase Auth Hook |
 | 四 | A3 FIFO 批次快照 | ⬜ | 暫不執行（等資料量） |
 | 四 | E5 多帳號與角色權限 | ⏸ | 需產品決策 |
-| 四 | F2 大檔案拆分 | ⬜ | — |
+| 四 | F2 大檔案拆分 | ✅ | `feat/audit-wave-4a` |
 
 ---
 
 ## 變更紀錄
 
 <!-- 每完成一項，於此區塊由新到舊追加一節 -->
+
+### 2026-09-03 · 第四梯（不需資料庫變更的部分）
+
+#### B3 — middleware 改為預設保護
+
+原本列舉「受保護路徑」（`['/', '/clubs']`），`/settings` 不在其中，只靠頁面自己的
+`getSession()` 把關——而該方法在伺服器端只解 cookie、不驗證簽章。
+
+改為列舉「公開路徑」（`/login`、`/manual`），其餘一律要求登入並經 `getUser()` 驗證。
+方向反過來之後，日後新增頁面預設就是受保護的，不會因為忘了加進清單而外露。
+
+#### F2 — 拆分大檔案與抽出重複的格式化函式
+
+| 檔案 | 變化 |
+|------|------|
+| `app/(app)/clubs/[id]/page.tsx` | 853 → 491 行 |
+| `components/create-event-dialog.tsx` | 新增，320 行 |
+| `components/club-pin-gate.tsx` | 新增，58 行 |
+| `lib/format.ts` | 新增，集中金額與損益的顯示格式 |
+
+`fmtMoney`／`profitClass`／`profitLabel` 原本在球隊頁與活動詳情各有一份（兩處的
+`profitClass` 差在字重），現改為共用；球隊頁保留一層加上 `font-bold` 的包裝，顯示結果不變。
+
+**累計成果**：`clubs/[id]/page.tsx` 自稽核前的 843 行降至 491 行（−42%），
+職責由四項（解析器、建立對話框、PIN 閘門、頁面本體）收斂為一項。
 
 ### 2026-09-03 · 第三梯（不需資料庫變更的部分）
 

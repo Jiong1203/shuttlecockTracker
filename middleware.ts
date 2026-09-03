@@ -35,13 +35,15 @@ export async function middleware(request: NextRequest) {
   // Refreshing the auth token
   const { data: { user } } = await supabase.auth.getUser()
 
-  // If user is not logged in and trying to access a protected page, redirect to login
-  // We'll protect the home page `/` for now
-  const protectedPaths = ['/', '/clubs']
-  const isProtected = protectedPaths.some(p =>
-    request.nextUrl.pathname === p || request.nextUrl.pathname.startsWith('/clubs/')
-  )
-  if (!user && isProtected) {
+  // 採「預設保護、明確開放」：列舉公開路徑，其餘一律要求登入。
+  // 先前是反過來列舉受保護路徑，結果 /settings 沒被列進去，只靠頁面自己的
+  // getSession() 把關——而 getSession 在伺服器端只解 cookie、不驗證簽章。
+  // 改成這個方向後，日後新增頁面預設就是安全的。
+  const PUBLIC_PATHS = ['/login', '/manual']
+  const { pathname } = request.nextUrl
+  const isPublic = PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(`${p}/`))
+
+  if (!user && !isPublic) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
