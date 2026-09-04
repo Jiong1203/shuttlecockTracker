@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { downloadCsv } from "@/lib/csv"
+import { downloadCsv, asText } from "@/lib/csv"
 import {
   Dialog,
   DialogContent,
@@ -158,11 +158,11 @@ export function SettlementDialog({ records, types = [] }: SettlementDialogProps)
       const info = types.find(t => t.shuttlecock_type_id === detail.type_id)
       const typeName = info ? `${info.brand} ${info.name}` : '未知球種'
       for (const b of detail.used_batches) {
-        rows.push([typeName, b.quantity, b.price, b.quantity * b.price, ''])
+        rows.push([asText(typeName), b.quantity, b.price, b.quantity * b.price, ''])
       }
-      rows.push([typeName, detail.total_quantity, '', detail.total_cost, `均價 ${detail.average_cost.toFixed(2)}`])
+      rows.push([asText(typeName), detail.total_quantity, '', detail.total_cost, asText(`均價 ${detail.average_cost.toFixed(2)}`)])
     }
-    rows.push(['總計', '', '', result.grand_total_cost, `${result.period.start || '不限'} 至 ${result.period.end || '不限'}`])
+    rows.push([asText('總計'), '', '', result.grand_total_cost, asText(`${result.period.start || '不限'} 至 ${result.period.end || '不限'}`)])
     downloadCsv('結算明細', ['球種', '數量(桶)', '批次單價', '小計', '備註'], rows)
   }
 

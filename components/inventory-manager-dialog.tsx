@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { RESTOCK_HISTORY_LIMIT } from "@/lib/limits"
-import { downloadCsv } from "@/lib/csv"
+import { downloadCsv, asText } from "@/lib/csv"
 import { showToast } from "@/components/ui/toast"
 import {
   Dialog,
@@ -229,19 +229,28 @@ export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen
     }
   }
 
+  // yyyy-mm-dd hh:mm — 比 toLocaleString 短且可直接排序
+  const fmtDateTime = (iso: string) => {
+    const d = new Date(iso)
+    const p = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
+  }
+
   // 匯出入庫紀錄，供對帳與成本核算
   const handleExportHistory = () => {
     if (history.length === 0) { showToast('目前沒有入庫紀錄', 'info'); return }
-    const rows = history.map(r => [
-      new Date(r.date).toLocaleString('zh-TW', { hour12: false }),
-      r.brand,
-      r.name,
+    // 日期與名稱一律以文字寫入：日期若被判定為日期型別，欄寬不足會顯示成 #####；
+    // 球種名稱可能剛好是數字（例如「5」），被當數值就會與「5+」之類的並排參差
+    const rows: unknown[][] = history.map(r => [
+      asText(fmtDateTime(r.date)),
+      asText(r.brand),
+      asText(r.name),
       r.quantity,
       r.unit_price,
       r.total_price,
     ])
     const total = history.reduce((sum, r) => sum + Number(r.total_price), 0)
-    rows.push(['合計', '', '', history.reduce((n, r) => n + Number(r.quantity), 0), '', total])
+    rows.push([asText('合計'), '', '', history.reduce((n, r) => n + Number(r.quantity), 0), '', total])
     downloadCsv('入庫紀錄', ['進貨日期', '品牌', '球種', '數量(桶)', '單價', '總額'], rows)
   }
 
