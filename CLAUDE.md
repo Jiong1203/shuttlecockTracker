@@ -32,6 +32,10 @@ npm run test:watch # Vitest（監看模式）
 > 套件一律在 **Windows 端的終端機**安裝；WSL 這邊只跑 `npx`、`tsc`、`eslint`、`vitest`。
 >
 > 同一限制也使 `npm run build` 無法在 WSL 執行（`lightningcss` 原生模組缺失）。
+>
+> **node_modules 是 Windows 平台的**，其中 `rollup` 等原生模組為 win32 版本，
+> 因此 **WSL 內無法執行 `npm test`**（缺 `@rollup/rollup-linux-x64-gnu`），`npx` 也一樣
+> ——模組解析仍會找到專案本地的 rollup。WSL 只能跑 `tsc` 與 `eslint`；測試在 Windows 端執行。
 
 **測試涵蓋範圍**：`lib/` 下的純函式，共 65 項。集中在最容易算錯又難以肉眼檢查的地方——
 FIFO 的台北時區日界、活動財務的應收／實收區分、LINE 訊息解析。

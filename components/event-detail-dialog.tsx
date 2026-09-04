@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { showToast } from "@/components/ui/toast"
 import { buildPaymentReminderText } from "@/lib/payment-reminder"
-import { downloadCsv } from "@/lib/csv"
+import { downloadCsv, asText } from "@/lib/csv"
 import { fmtMoney, profitClass, profitLabel } from "@/lib/format"
 import {
   Loader2, Plus, Trash2, BadgeCheck, Lock, Sparkles, RotateCcw,
@@ -528,13 +528,13 @@ export function EventDetailDialog({ eventId, open, onOpenChange }: EventDetailDi
   const handleExportAttendees = () => {
     if (!event) return
     if (event.event_attendees.length === 0) { showToast('目前沒有出席名單', 'info'); return }
-    const rows = event.event_attendees.map((a, i) => [
+    const rows: unknown[][] = event.event_attendees.map((a, i) => [
       i + 1,
-      a.display_name,
+      asText(a.display_name),
       a.is_free ? 0 : Number(a.fee),
-      a.is_free ? '免費' : a.paid ? '已繳' : '未繳',
+      asText(a.is_free ? '免費' : a.paid ? '已繳' : '未繳'),
     ])
-    rows.push(['', '合計', event.total_due, `實收 ${event.total_paid} / 未收 ${event.total_unpaid}`])
+    rows.push(['', asText('合計'), event.total_due, asText(`實收 ${event.total_paid} / 未收 ${event.total_unpaid}`)])
     downloadCsv(`出席明細_${event.event_date}`, ['序號', '姓名', '應繳', '狀態'], rows)
   }
 
