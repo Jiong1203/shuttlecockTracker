@@ -44,22 +44,26 @@ export function PickupHistory({ records, onDelete }: PickupHistoryProps) {
   const [query, setQuery] = useState("")
   const [month, setMonth] = useState("")   // 'YYYY-MM'，空字串為不限
 
+  // API 會多回一筆作為「還有更多」的訊號，實際只呈現上限筆數
+  const truncated = records.length > PICKUP_HISTORY_LIMIT
+  const visible = truncated ? records.slice(0, PICKUP_HISTORY_LIMIT) : records
+
   // 可選月份取自現有資料，避免列出沒有紀錄的月份
   const months = useMemo(() => {
-    const set = new Set(records.map(r => r.created_at.slice(0, 7)))
+    const set = new Set(visible.map(r => r.created_at.slice(0, 7)))
     return [...set].sort().reverse()
-  }, [records])
+  }, [visible])
 
   // 目前資料量前端過濾即可；待 C3 的分頁完成後再移到後端
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return records.filter(r => {
+    return visible.filter(r => {
       if (month && !r.created_at.startsWith(month)) return false
       if (!q) return true
       const type = `${r.shuttlecock_types?.brand ?? ''} ${r.shuttlecock_types?.name ?? ''}`
       return r.picker_name.toLowerCase().includes(q) || type.toLowerCase().includes(q)
     })
-  }, [records, query, month])
+  }, [visible, query, month])
 
   const handleDelete = async () => {
     if (!deleteId) return
@@ -122,7 +126,7 @@ export function PickupHistory({ records, onDelete }: PickupHistoryProps) {
             {filtered.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center py-8 text-slate-400">
-                  {records.length === 0 ? '尚無領取紀錄' : '沒有符合條件的紀錄'}
+                  {visible.length === 0 ? '尚無領取紀錄' : '沒有符合條件的紀錄'}
                 </TableCell>
               </TableRow>
             ) : (
@@ -162,7 +166,7 @@ export function PickupHistory({ records, onDelete }: PickupHistoryProps) {
       </div>
 
       {/* 後端固定回傳最近 100 筆。不說明的話，使用者會以為更早的紀錄不存在。 */}
-      {records.length >= PICKUP_HISTORY_LIMIT && (
+      {truncated && (
         <p className="px-4 py-2.5 text-xs text-muted-foreground text-center border-t">
           僅載入最近 {PICKUP_HISTORY_LIMIT} 筆領取紀錄{query || month ? '，搜尋與篩選在此範圍內進行' : ''}；更早的紀錄仍保存於系統中
         </p>

@@ -20,7 +20,9 @@ export async function GET() {
       .select('*, shuttlecock_types(brand, name)')
       .eq('group_id', groupId)
       .order('created_at', { ascending: false })
-      .limit(PICKUP_HISTORY_LIMIT)
+      // 多取一筆：回傳筆數超過上限就代表確實還有更早的紀錄。
+      // 只取上限筆數的話，「剛好滿」與「被截斷」無法分辨，提示會誤報。
+      .limit(PICKUP_HISTORY_LIMIT + 1)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })

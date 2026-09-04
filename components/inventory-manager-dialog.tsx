@@ -390,7 +390,7 @@ export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen
                                     )}
                                 </tbody>
                             </table>
-                            {history.length >= RESTOCK_HISTORY_LIMIT && (
+                            {history.length > RESTOCK_HISTORY_LIMIT && (
                                 <p className="px-4 py-2.5 text-xs text-muted-foreground text-center border-t">
                                     僅顯示最近 {RESTOCK_HISTORY_LIMIT} 筆入庫紀錄，更早的紀錄仍保存於系統中
                                 </p>
@@ -578,7 +578,7 @@ export function InventoryManagerDialog({ trigger, onUpdate, open: controlledOpen
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {history.map((record) => (
+                                    {history.slice(0, RESTOCK_HISTORY_LIMIT).map((record) => (
                                         <tr key={record.id} className="border-t border-border hover:bg-muted/20 transition-colors">
                                             <td className="p-3 text-muted-foreground whitespace-nowrap">
                                                 {new Date(record.date).toLocaleDateString()}
