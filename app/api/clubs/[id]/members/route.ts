@@ -40,7 +40,11 @@ export async function GET(
     .from('club_members')
     .select('id, display_name, default_fee, is_free, is_active, note, created_at')
     .eq('club_id', id)
-    .order('display_name', { ascending: true })
+    // 依建檔時間排序：中文姓名在資料庫是按 Unicode 碼位排的，對使用者等同隨機
+    // （「輝」U+8F1D 會排在「阿」U+963F 之前，既非筆劃也非注音）。
+    // 加入順序至少符合直覺，也隱含了誰是老隊員、誰是新加入的。
+    .order('created_at', { ascending: true })
+    .order('id', { ascending: true })   // 同一毫秒建立時仍有穩定順序
 
   if (!includeInactive) query = query.eq('is_active', true)
 
@@ -79,12 +83,16 @@ export async function POST(
     )
   }
 
+  // 名冊依 created_at 排序，同批次寫入時資料庫的 now() 會完全相同，
+  // 順序就沒了——與出席者批次寫入同一個處理方式，逐筆遞增 1 毫秒。
+  const base = Date.now()
   const payload = rows.map((r, i) => ({
     club_id: id,
     display_name: names[i]!,
     default_fee: r.defaultFee ?? 0,
     is_free: r.isFree ?? false,
     note: r.note?.trim() || null,
+    created_at: new Date(base + i).toISOString(),
   }))
 
   const { data, error } = await supabase

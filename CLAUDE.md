@@ -228,6 +228,9 @@ groups → clubs → badminton_events → event_attendees
 - LINE 訊息解析後會**自動比對名冊**（以 `display_name` 完全相符），對得上的套用該成員的
   `default_fee` 與 `is_free` 並記下 `member_id`。
 - 停用（`is_active=false`）而非刪除，是為了保留歷史關聯又不干擾勾選清單。
+- **排序依 `created_at`（加入順序），不可改回 `display_name`**：中文姓名在 PostgreSQL 是按
+  Unicode 碼位排序，對使用者等同隨機（「輝」U+8F1D 會排在「阿」U+963F 之前）。
+  批次新增時同樣逐筆遞增時間戳，理由與出席者相同。
 
 ### PIN 連錯鎖定
 - `POST /api/clubs/[id]/verify-pin` 連錯 5 次鎖定 15 分鐘（`clubs.failed_pin_attempts` /
