@@ -72,6 +72,18 @@
 
 ## 環境限制（影響驗證強度）
 
+> **2026-09-03 事故與修正**：先前在 WSL 內執行 `npm install -D vitest`，安裝以 EPERM 失敗，
+> 但已留下 `node_modules/.bin/{vitest,vite,rolldown}` 三個 Linux symlink（目標不存在）
+> 與空的 `@vitest/` 目錄。Windows 端的 npm 對這些 symlink 執行 `lstat` 回 EACCES，
+> 導致正常的 `npm install` 也無法完成。
+>
+> **修正**：移除該批殘留（`package-lock.json` 未受污染），並將 vitest 由 `^4.1.11`
+> 降為 `^3.2.7`——4.x 依賴 `rolldown` 這個較新的原生二進位模組，在此混合環境風險偏高；
+> 3.x 走 vite/esbuild，是成熟路徑。65 項測試在 3.2.7 下全數通過。
+>
+> **往後規則**：套件一律在 Windows 端安裝，WSL 只用於 `npx` / `tsc` / `eslint` / `vitest`。
+
+
 本機為 WSL 存取 `/mnt/d` 的 Windows 檔案系統，`npm install` 會因無法對 node_modules 執行
 `chmod` 而失敗（EPERM）。連帶影響：
 

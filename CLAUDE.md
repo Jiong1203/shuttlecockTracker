@@ -24,6 +24,15 @@ npm test           # Vitest（單次執行）
 npm run test:watch # Vitest（監看模式）
 ```
 
+> ⚠️ **不要在 WSL 內執行 `npm install`。**
+> 專案位於 `/mnt/d`（Windows 檔案系統），WSL 無法對其上的 node_modules 執行 `chmod`，
+> 安裝會以 EPERM 中途失敗，並留下 **Linux symlink 與半成品目錄**——Windows 端的 npm
+> 之後對這些 symlink 執行 `lstat` 會回 EACCES，連帶讓正常的 `npm install` 也裝不起來
+> （2026-09-03 實際發生過，殘留為 `.bin/{vitest,vite,rolldown}` 與空的 `@vitest/`）。
+> 套件一律在 **Windows 端的終端機**安裝；WSL 這邊只跑 `npx`、`tsc`、`eslint`、`vitest`。
+>
+> 同一限制也使 `npm run build` 無法在 WSL 執行（`lightningcss` 原生模組缺失）。
+
 **測試涵蓋範圍**：`lib/` 下的純函式，共 65 項。集中在最容易算錯又難以肉眼檢查的地方——
 FIFO 的台北時區日界、活動財務的應收／實收區分、LINE 訊息解析。
 UI 與 API route 目前無測試。
