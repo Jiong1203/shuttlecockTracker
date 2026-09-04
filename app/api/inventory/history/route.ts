@@ -29,7 +29,7 @@ export async function GET(request: Request) {
       `)
       .eq('group_id', groupId)
       .order('created_at', { ascending: false })
-      .limit(RESTOCK_HISTORY_LIMIT)
+      .limit(RESTOCK_HISTORY_LIMIT + 1)   // 多取一筆以分辨「剛好滿」與「還有更多」
 
     if (startDate) {
       query = query.gte('created_at', startDate)
