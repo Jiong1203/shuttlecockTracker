@@ -8,6 +8,7 @@ import { EventDetailDialog } from "@/components/event-detail-dialog"
 import { computeEventStats, groupByMonth } from "@/lib/event-stats"
 import { EventTrendChart } from "@/components/event-trend-chart"
 import { CreateEventDialog } from "@/components/create-event-dialog"
+import { notFound } from "next/navigation"
 import { ClubPinGate } from "@/components/club-pin-gate"
 import { ClubMembersDialog } from "@/components/club-members-dialog"
 import { fmtMoney, profitLabel, profitClass as baseProfitClass } from "@/lib/format"
@@ -46,6 +47,7 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
   const [club, setClub] = useState<Club | null>(null)
   const [verified, setVerified] = useState(false)
   const [loadingClub, setLoadingClub] = useState(true)
+  const [clubMissing, setClubMissing] = useState(false)
   const [events, setEvents] = useState<BadmintonEvent[]>([])
   const [loadingEvents, setLoadingEvents] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
@@ -64,9 +66,15 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
     const isVerified = sessionStorage.getItem(`club_verified_${clubId}`) === 'true'
     setVerified(isVerified)
 
+    // 先確認球隊存在再決定要不要顯示 PIN 畫面。
+    // 否則不存在的 id 也會先跳出 PIN 輸入，等使用者輸入完才說「找不到此球隊」。
     fetch(`/api/clubs/${clubId}`)
-      .then(r => r.json())
-      .then(d => { if (d.id) setClub(d) })
+      .then(async r => {
+        if (!r.ok) { setClubMissing(true); return null }
+        return r.json()
+      })
+      .then(d => { if (d?.id) setClub(d) })
+      .catch(() => setClubMissing(true))
       .finally(() => setLoadingClub(false))
   }, [clubId])
 
@@ -113,6 +121,9 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
   }
 
   // Loading state
+  // 交給 app/(app)/not-found.tsx 呈現，保有側邊欄與回首頁的出口
+  if (clubMissing) notFound()
+
   if (loadingClub) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -121,11 +132,13 @@ export default function ClubEventsPage({ params }: { params: Promise<{ id: strin
     )
   }
 
-  // PIN gate
+  // PIN gate。走到這裡球隊必定存在（不存在已由上方的 notFound 攔下），
+  // 所以 PIN 畫面一定帶得出正確的球隊名稱。
   if (!verified) {
+    if (!club) return null
     return (
       <>
-        <ClubPinGate clubId={clubId} clubName={club?.name ?? '球隊'} onVerified={() => setVerified(true)} />
+        <ClubPinGate clubId={clubId} clubName={club.name} onVerified={() => setVerified(true)} />
         <ToastContainer />
       </>
     )

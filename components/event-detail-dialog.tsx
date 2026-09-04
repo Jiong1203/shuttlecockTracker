@@ -12,7 +12,7 @@ import { buildPaymentReminderText } from "@/lib/payment-reminder"
 import { downloadCsv, asText } from "@/lib/csv"
 import { fmtMoney, profitClass, profitLabel } from "@/lib/format"
 import {
-  Loader2, Plus, Trash2, BadgeCheck, Lock, Sparkles, RotateCcw,
+  Loader2, Plus, Trash2, BadgeCheck, Lock, Sparkles, RotateCcw, AlertTriangle,
 } from "lucide-react"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -357,6 +357,7 @@ interface EventDetailDialogProps {
 export function EventDetailDialog({ eventId, open, onOpenChange }: EventDetailDialogProps) {
   const [event, setEvent] = useState<FullEvent | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [settling, setSettling] = useState(false)
   const [newName, setNewName] = useState('')
   const [addingAttendee, setAddingAttendee] = useState(false)
@@ -368,10 +369,15 @@ export function EventDetailDialog({ eventId, open, onOpenChange }: EventDetailDi
 
   const fetchEvent = useCallback(async () => {
     setLoading(true)
+    setLoadError(null)
     try {
       const res = await fetch(`/api/events/${eventId}`)
       const data = await res.json()
       if (res.ok) { setEvent(data); setSelectedIds(new Set()) }
+      // 不處理的話 loading 結束後 event 仍是 null，畫面會永遠停在轉圈圈
+      else setLoadError(data.error || '無法載入這場活動')
+    } catch {
+      setLoadError('連線發生錯誤，請稍後再試')
     } finally { setLoading(false) }
   }, [eventId])
 
@@ -580,9 +586,20 @@ export function EventDetailDialog({ eventId, open, onOpenChange }: EventDetailDi
           </DialogTitle>
         </DialogHeader>
 
-        {loading || !event ? (
+        {loading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : loadError || !event ? (
+          <div className="flex flex-col items-center justify-center py-12 px-4 space-y-3 text-center">
+            <span className="flex items-center justify-center w-12 h-12 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-500">
+              <AlertTriangle className="w-6 h-6" />
+            </span>
+            <p className="text-sm font-semibold text-foreground">{loadError || '找不到這場活動'}</p>
+            <p className="text-xs text-muted-foreground max-w-xs">
+              這場活動可能已經被刪除。關閉後重新整理列表即可。
+            </p>
+            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>關閉</Button>
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto space-y-4 py-1 px-1">
